@@ -55,7 +55,7 @@ public class ImagePimp extends JFrame{
 
 	openFileMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-		JFileChooser fileChooser = new JFileChooser();
+		JFileChooser fileChooser = new JFileChooser(new File("./images"));
 		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		if (fileChooser.showOpenDialog(ImagePimp.this) != JFileChooser.CANCEL_OPTION){
                     ImageFrame imageFrame=new ImageFrame(fileChooser.getSelectedFile());
