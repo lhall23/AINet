@@ -1,5 +1,6 @@
 //AINet.java
 // 	-Lee Hall Tue 16 Oct 2012 11:03:15 AM EDT
+// 	Refactored from ImagePimp.java
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,8 +13,43 @@ import java.awt.Image;
 
 public class AINet {
 
+    private static final String TRAINING_FILE="test_data/ground_training.txt";
+    private static final String DATA_FILE="test_data/ground.txt";
+    private static final int DIMENSIONS=3;
+
 	public static void main (String[] args){
-		
+
+        /* 
+         * Moved from setupAINet(), which should be passed the data in an array
+         * format. Otherwise we have different codepaths for loading test data
+         * files and loading images from the interface.
+         */
+
+        FileReader fin;
+        Scanner src;
+        double[] row = new double[DIMENSIONS];
+        ArrayList<double[]> tempData = new ArrayList<double[]>();
+        try{
+            fin=new FileReader(DATA_FILE);
+            src=new Scanner(fin);
+
+            int i=0, row_count=0;
+            while(src.hasNext()){
+                row[i%DIMENSIONS]=src.nextDouble();
+                if (i++%DIMENSIONS==DIMENSIONS-1){ 
+                    tempData.add(row);
+                }
+            }
+            if (i%DIMENSIONS != 0) {
+                System.out.print("Unexpected data size in " + 
+                    DATA_FILE + "\n");
+            }
+        }catch(IOException e){
+            System.out.print(e);
+        }
+        float[][] inputData=tempData.toArray(
+            new float[DIMENSIONS][tempData.size()]);
+	    	
 	}
 
   private static final int NDimention=3;
@@ -41,8 +77,6 @@ public class AINet {
     private  Antigen Whole_Ag[];
     Dimension imageInDimension;
     int TRGB[][][];
-
-
    // private static double upperbound = 3.0;
     //private static double lowerbound = 1.0;
 
@@ -398,33 +432,13 @@ public class AINet {
         }
 
 //initialise the whole antigen community
-        FileReader fin;
-        Scanner src;
-        try{
-        fin=new FileReader("ground.txt");
-
-        src=new Scanner(fin);
-
-        for(int i=0;i<AgScale;i++)
-        {
-            if(src.hasNext())
-            Whole_Ag[i]=new Antigen();
-            for(int j=0;j<NDimention;j++)
-         {
-
-             if(Whole_Ag[i]!=null)
-             Whole_Ag[i].AgValue[j]=src.nextDouble();
-         }
-
-        }
-
-        }catch(IOException e){
-            System.out.print(e);
-        }
 
 //Initialise the training antigen
+        FileReader fin;
+        Scanner src;
+
         try{
-        fin=new FileReader("ground_training.txt");
+        fin=new FileReader(TRAINING_FILE);
         src=new Scanner(fin);
 
         for(int i=0;i<Training_AgScale;i++)
@@ -592,14 +606,24 @@ public class AINet {
     }
 
     public AINet(Image imageIn) throws Exception {
-    Dimension imageInDimension=ImagePimp.getImageDimension(imageIn);
-    int TRGB[][][] = ImagePimp.pixelsArrayToTRGBArray(ImagePimp.imageToPixelsArray(imageIn), imageInDimension);
-    Antigen [] Whole_Ag=new Antigen[(int)(imageInDimension.getHeight()*imageInDimension.getWidth())];
+    imageInDimension=ImagePimp.getImageDimension(imageIn);
+    TRGB = ImagePimp.pixelsArrayToTRGBArray(ImagePimp.imageToPixelsArray(imageIn), imageInDimension);
+    // This is for reading input from a text file.
+    //Antigen [] Whole_Ag=new Antigen[AgScale];
+    Whole_Ag=new Antigen[(int)(imageInDimension.getHeight()*imageInDimension.getWidth())];
+    setupAINet(Whole_Ag);
+    }
+
+    public AINet(int[][][] TRGB) throws Exception {
+    this.TRGB = TRGB;
+    Whole_Ag=new Antigen[TRGB[0].length * TRGB[0][0].length];
     setupAINet(Whole_Ag);
     }
 
     public int[] getResults(){
     int i=0;
+        System.out.printf("Returning TRGB array of size %d,%d,%d\n",
+            TRGB.length, TRGB[0].length,TRGB[0][0].length);
         for(int row=0;row<imageInDimension.getHeight();row++)
         for (int column = 0; column < imageInDimension.getWidth(); column++)
         {
