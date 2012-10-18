@@ -5642,11 +5642,13 @@ public class ImagePimp extends JFrame{
     }
 
     protected static int[] TRGBArrayToPixelsArray(int[][][] TRGB, Dimension imageInDimension){
-        int imagePixelLength = (int) (imageInDimension.getWidth() * imageInDimension.getHeight());
+        int row_length=TRGB[0][0].length;
+        int col_length=TRGB[0].length;
+        int imagePixelLength = (col_length * row_length);
         int pixels[] = new int[imagePixelLength];
         for (int column = 0, row = 0, pixelIndex = 0; pixelIndex < imagePixelLength; pixelIndex++){
             pixels[pixelIndex] = getTRGB(TRGB[0][column][row], TRGB[1][column][row], TRGB[2][column][row], TRGB[3][column][row]);
-            if (++column == imageInDimension.getWidth()){
+            if (++column == col_length){
                 column = 0;
                 row++;
             }

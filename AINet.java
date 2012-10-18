@@ -17,25 +17,28 @@ public class AINet {
     private static final String DATA_FILE="test_data/ground.txt";
     private static final int DIMENSIONS=3;
 
-	public static void main (String[] args){
+	public static void main (String[] args) throws Exception{
 
         /* 
          * Moved from setupAINet(), which should be passed the data in an array
          * format. Otherwise we have different codepaths for loading test data
          * files and loading images from the interface.
+         *
+         * *FIXME* This should eventually take in doubles, but we need to deal
+         * with the final output first, so we'll stick with ints
          */
 
         FileReader fin;
         Scanner src;
-        double[] row = new double[DIMENSIONS];
-        ArrayList<double[]> tempData = new ArrayList<double[]>();
+        int[] row = new int[DIMENSIONS];
+        ArrayList<int[]> tempData = new ArrayList<int[]>();
         try{
             fin=new FileReader(DATA_FILE);
             src=new Scanner(fin);
 
             int i=0, row_count=0;
             while(src.hasNext()){
-                row[i%DIMENSIONS]=src.nextDouble();
+                row[i%DIMENSIONS]=src.nextInt();
                 if (i++%DIMENSIONS==DIMENSIONS-1){ 
                     tempData.add(row);
                 }
@@ -47,9 +50,9 @@ public class AINet {
         }catch(IOException e){
             System.out.print(e);
         }
-        float[][] inputData=tempData.toArray(
-            new float[DIMENSIONS][tempData.size()]);
-	    	
+        int[][] inputData=tempData.toArray(
+            new int[DIMENSIONS][tempData.size()]);
+	    AINet ais=new AINet(inputData);  	
 	}
 
   private static final int NDimention=3;
@@ -605,64 +608,117 @@ public class AINet {
          
     }
 
+    // *KILLME*
     public AINet(Image imageIn) throws Exception {
-    imageInDimension=ImagePimp.getImageDimension(imageIn);
-    TRGB = ImagePimp.pixelsArrayToTRGBArray(ImagePimp.imageToPixelsArray(imageIn), imageInDimension);
+    //Pass this value downstream. We'd like to deprecate this constructor
+    this(ImagePimp.pixelsArrayToTRGBArray(
+            ImagePimp.imageToPixelsArray(imageIn), 
+            ImagePimp.getImageDimension(imageIn)
+        ));
+    // this.imageInDimension=ImagePimp.getImageDimension(imageIn);
+    // this.TRGB = ImagePimp.pixelsArrayToTRGBArray(ImagePimp.imageToPixelsArray(imageIn), imageInDimension);
     // This is for reading input from a text file.
     //Antigen [] Whole_Ag=new Antigen[AgScale];
-    Whole_Ag=new Antigen[(int)(imageInDimension.getHeight()*imageInDimension.getWidth())];
-    setupAINet(Whole_Ag);
+
     }
 
+   
+    // Take in a 3-d TRGB array and dump it into a 2-d array, 
+    // passing it on the the eventual constructor 
+    // This is currently stupidly inefficient, but these two legacy
+    // constructors will go away as soon as we can actually test things
+    // *KILLME*
     public AINet(int[][][] TRGB) throws Exception {
-    this.TRGB = TRGB;
-    Whole_Ag=new Antigen[TRGB[0].length * TRGB[0][0].length];
-    setupAINet(Whole_Ag);
+        this(TRGBto2dArray(TRGB));     
+    }
+
+    public static int[][] TRGBto2dArray(int[][][] TRGB){
+        int row_len=TRGB[0][0].length;
+        int col_len=TRGB[0].length;
+        int[][] inputData = new int[row_len*col_len][NDimention]; 
+        System.out.printf("Rows: %d, Cols: %s\n", row_len, col_len);
+        //There are 4 bands, but we don't care about the transparency
+        int bands=3;
+
+        //Following loop from getResults() -- rowmajor or column major flattening
+        //shouldn't matter as long as it's consistent
+        for (int row=0; row < row_len; row++){
+            for (int col=0; col < col_len; col++){
+                for (int k=0; k < bands; k++){
+                    inputData[row * col_len + col][k]=TRGB[k+1][col][row];
+                }
+            }
+        }
+        return inputData;
+    }
+
+    /* 
+     * This will be the final constructor. If a 2d array is passed in and
+     * returned, the AINet module doesn't need to know anything about images,
+     * ImagePimps array conversions or the dimensions of what is being looked
+     * at.
+     */
+    public AINet(int[][] inputData) throws Exception{
+        //*KILLME* This makes sure that TRGB is initialized for getResults()
+        //when this is the only constructor called. Since getResults should be
+        //returning a flattened array anyway, the original dimensions are
+        //irrelevant
+        this.TRGB=new int[4][inputData.length][1];
+
+        //*FIXME* Make a better constructor for Antigens
+        Whole_Ag=new Antigen[inputData.length];
+        for (int i=0; i < inputData.length; i++){
+            Whole_Ag[i]=new Antigen();
+            for (int j=0; j < inputData[0].length; j++){
+                Whole_Ag[i].AgValue[j]=inputData[i][j];
+            }
+        }
+        setupAINet(Whole_Ag);
     }
 
     public int[] getResults(){
     int i=0;
-        System.out.printf("Returning TRGB array of size %d,%d,%d\n",
+        System.out.printf("Generating TRGB array of size %d,%d,%d\n",
             TRGB.length, TRGB[0].length,TRGB[0][0].length);
-        for(int row=0;row<imageInDimension.getHeight();row++)
-        for (int column = 0; column < imageInDimension.getWidth(); column++)
+        for(int row=0;row<TRGB[0][0].length;row++)
+        for (int column = 0; column <TRGB[0].length; column++)
         {
-            if(Whole_Ag[i] != null)
-            if(Whole_Ag[i].AgClass==1)
-            {
-                TRGB[1][column][row]=255;//55;
-                TRGB[2][column][row]=222;//255;//128;
-                TRGB[3][column][row]=10;//78;
-            }
-            else if(Whole_Ag[i].AgClass==2)
-            {
-                TRGB[1][column][row]=0;
-                TRGB[2][column][row]=0;//64;//75;
-                TRGB[3][column][row]=215;//78;
-            }
-            else if(Whole_Ag[i].AgClass==3)
-            {
-                TRGB[1][column][row]=0;
-                TRGB[2][column][row]=215;
-                TRGB[3][column][row]=0;
-            }
-            else if(Whole_Ag[i].AgClass==4)
-            {
-                TRGB[1][column][row]=215;
-                TRGB[2][column][row]=0;
-                TRGB[3][column][row]=0;
-            }
-            else if(Whole_Ag[i].AgClass==5)
-            {
-                TRGB[1][column][row]=0;
-                TRGB[2][column][row]=0;
-                TRGB[3][column][row]=0;
-            }
-
+            if(Whole_Ag[i] != null) {
+                TRGB[0][column][row]=255;
+                if(Whole_Ag[i].AgClass==1)
+                {
+                    TRGB[1][column][row]=255;//55;
+                    TRGB[2][column][row]=222;//255;//128;
+                    TRGB[3][column][row]=10;//78;
+                }
+                else if(Whole_Ag[i].AgClass==2)
+                {
+                    TRGB[1][column][row]=0;
+                    TRGB[2][column][row]=0;//64;//75;
+                    TRGB[3][column][row]=215;//78;
+                }
+                else if(Whole_Ag[i].AgClass==3)
+                {
+                    TRGB[1][column][row]=0;
+                    TRGB[2][column][row]=215;
+                    TRGB[3][column][row]=0;
+                }
+                else if(Whole_Ag[i].AgClass==4)
+                {
+                    TRGB[1][column][row]=215;
+                    TRGB[2][column][row]=0;
+                    TRGB[3][column][row]=0;
+                }
+                else if(Whole_Ag[i].AgClass==5)
+                {
+                    TRGB[1][column][row]=0;
+                    TRGB[2][column][row]=10;
+                    TRGB[3][column][row]=0;
+                }
+            } 
             i++;
 
         }
-
 
     /*for(int row=0;row<imageInDimension.getHeight();row++)
         for (int column = 0; column < imageInDimension.getWidth(); column++)
@@ -672,7 +728,8 @@ public class AINet {
         }
     System.out.println(imageInDimension.getHeight()*imageInDimension.getWidth());*/
     //return ImagePimp.pixelsArrayToImage(ImagePimp.TRGBArrayToPixelsArray(TRGB, imageInDimension), imageInDimension);
-    return ImagePimp.TRGBArrayToPixelsArray(TRGB, imageInDimension);
+    return ImagePimp.TRGBArrayToPixelsArray(TRGB, 
+        new Dimension(TRGB[0][0].length, TRGB[0].length));
 }
 
 }
