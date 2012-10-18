@@ -3,6 +3,7 @@
 // 	Refactored from ImagePimp.java
 
 import java.io.IOException;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
@@ -17,7 +18,85 @@ public class AINet {
     private static final String DATA_FILE="test_data/ground.txt";
     private static final int DIMENSIONS=3;
 
+    // *FIXME* Not a global. This goes away with refactoring
+    private static File input_file;
+
 	public static void main (String[] args) throws Exception{
+        String optarg_s="";
+        File corpus_file=null;
+
+        final String help = "Usage: \n\t-h (help)\n" +
+            "\t-t FILENAME \tTraining set\n" +
+            "\t-f FILENAME \tInput file\n" +
+            "\t-p          \tparseable output\n" +
+            "\t-T          \ttesting output\n";
+
+                // Parse arguments... where's my beloved optarg?!
+        int i= 0;
+        char opt=' ';
+        parse_options:
+        while ((i < args.length) && (args[i].charAt(0) == '-')){
+            //If there's an argument after the option, grab it.
+            //Make sure we're not testing against the last round
+            optarg_s="";
+            if (args[i].length() > 2){
+                optarg_s=args[i].substring(2);
+            }
+            opt = args[i++].charAt(1);
+
+            //Parse arguments that don't take options 
+            switch(opt){
+                case 'h':
+                    System.out.print(help);
+                    System.exit(1);
+                case 'p':
+                    //Currently a null op
+                    continue;
+                case 'T':
+                    //Currently a null op
+                    continue;
+            }
+
+            //If we don't already have an argument and we make it here, 
+            //find one
+            if (optarg_s == "") {
+                if  ((i < args.length) && (args[i].charAt(0) != '-')){
+                    optarg_s=args[i++];
+                }             }
+            }
+
+            switch(opt){
+                case 't':
+                    corpus_file=new File(optarg_s); 
+                    if (!corpus_file.canRead()){
+                        System.out.printf(
+                            "Can't read training file %s. Exiting.", 
+                            corpus_file.getName());
+                        System.exit(1);
+                    }
+                    break;
+                case 'f':
+                    input_file=new File(optarg_s); 
+                    if (!input_file.canRead()){
+                        System.out.printf(
+                            "Can't read input file %s. Exiting.", 
+                            input_file.getName());
+                        System.exit(1);
+                    }
+                    break;
+                default:
+                    System.out.print(help);
+                    System.exit(1);
+                    break;
+            }
+
+            if (corpus_file == null) {
+                corpus_file=new File(TRAINING_FILE);
+            } 
+            if (input_file == null) {
+                input_file=new File(DATA_FILE);
+            } 
+
 
         /* 
          * Moved from setupAINet(), which should be passed the data in an array
@@ -33,17 +112,17 @@ public class AINet {
         int[] row = new int[DIMENSIONS];
         ArrayList<int[]> tempData = new ArrayList<int[]>();
         try{
-            fin=new FileReader(DATA_FILE);
+            fin=new FileReader(input_file);
             src=new Scanner(fin);
 
-            int i=0, row_count=0;
+            int records=0, row_count=0;
             while(src.hasNext()){
-                row[i%DIMENSIONS]=src.nextInt();
-                if (i++%DIMENSIONS==DIMENSIONS-1){ 
+                row[records%DIMENSIONS]=src.nextInt();
+                if (records++%DIMENSIONS==DIMENSIONS-1){ 
                     tempData.add(row);
                 }
             }
-            if (i%DIMENSIONS != 0) {
+            if (records%DIMENSIONS != 0) {
                 System.out.print("Unexpected data size in " + 
                     DATA_FILE + "\n");
             }
@@ -588,8 +667,8 @@ public class AINet {
          for(int i=0;i<BaseScale;i++)
             System.out.println(AbBase[i].AbValue[0]+" "+AbBase[i].AbValue[1]+" "+AbBase[i].AbValue[2]+" "+AbBase[i].AbClass+" "+AbBase[i].Affinity);
             
-            // System.out.println("Whole Affinity = "+Whole_Affinity(AbBase,Whole_Ag,AgScale));
-             //System.out.println("Total number of iterations = "+iter_count);
+           //  System.out.println("Whole Affinity = "+Whole_Affinity(AbBase,Whole_Ag,AgScale));
+           //  System.out.println("Total number of iterations = "+iter_count);
      //}//end of runainet
 
              Antibody ab = new Antibody();
