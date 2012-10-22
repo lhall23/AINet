@@ -235,8 +235,9 @@ public class AINet {
     }
 
 
-
+    
 //Manual assignment of one Antibody to another Antibody
+// *FIXME* This should be a clone() method of the Antibody class
      public static void equate(Antibody Ab1,Antibody Ab2)
     {
          if(Ab1!=null&&Ab2!=null)
@@ -259,6 +260,7 @@ public class AINet {
        // equle(ab,Ab[0]);
         for(int i=0;i<AgScale;i++)
         {
+            //*FIXME* You don't need a deep copy here
             for(int j=0;j<BaseScale;j++)
                 if(j==0||(getAffinity(Ag[i],ab)<getAffinity(Ag[i],Ab[j])))
                     equate(ab,Ab[j]);
@@ -513,7 +515,9 @@ public class AINet {
             }
         }
 
-//initialise the whole antigen community
+// initialise the whole antigen community 
+// This is now passed in as an argument and doesn't need to be initialiazed
+// here
 
 //Initialise the training antigen
         FileReader fin;
@@ -568,7 +572,8 @@ public class AINet {
                       equate(AbBase[i],Initial_Ab[i]);
 
               }
-
+                  // *FIXME* 
+                  // Is this supposed to be bubble sort?
                   for(int j=0;j<BaseScale;j++)
                   {
                       for(int i=BaseScale;i<Initial_AbScale;i++)
@@ -591,9 +596,9 @@ public class AINet {
          while(true){
             
                  correctness_current_iteration = Whole_Affinity(AbBase,Training_Ag,Training_AgScale);
-            //    System.out.println("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
+                System.out.println("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
               if(correctness_current_iteration > 0.99 || m >=20 || iter_count > max_iter){
-                  //System.out.print("Breaking while loop after "+iter_count+" times");
+                  System.out.print("Breaking while loop after "+iter_count+" times");
                   break;
              }
               else

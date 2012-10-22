@@ -22,14 +22,11 @@ import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.event.*;
 import javax.imageio.ImageIO;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Scanner;
 
 public class ImagePimp extends JFrame{
     public Container contentPane;
     public static JDesktopPane desktopPane;
+
 
     public ImagePimp(){
 	super("ImagePimp");
