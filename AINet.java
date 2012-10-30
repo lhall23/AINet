@@ -34,7 +34,6 @@ public class AINet {
                 // Parse arguments... where's my beloved optarg?!
         int i= 0;
         char opt=' ';
-        parse_options:
         while ((i < args.length) && (args[i].charAt(0) == '-')){
             //If there's an argument after the option, grab it.
             //Make sure we're not testing against the last round
@@ -62,40 +61,41 @@ public class AINet {
             if (optarg_s == "") {
                 if  ((i < args.length) && (args[i].charAt(0) != '-')){
                     optarg_s=args[i++];
-                }             }
+                }            
             }
+        }
 
-            switch(opt){
-                case 't':
-                    corpus_file=new File(optarg_s); 
-                    if (!corpus_file.canRead()){
-                        System.out.printf(
-                            "Can't read training file %s. Exiting.", 
-                            corpus_file.getName());
-                        System.exit(1);
-                    }
-                    break;
-                case 'f':
-                    input_file=new File(optarg_s); 
-                    if (!input_file.canRead()){
-                        System.out.printf(
-                            "Can't read input file %s. Exiting.", 
-                            input_file.getName());
-                        System.exit(1);
-                    }
-                    break;
-                default:
-                    System.out.print(help);
+        switch(opt){
+            case 't':
+                corpus_file=new File(optarg_s); 
+                if (!corpus_file.canRead()){
+                    System.out.printf(
+                        "Can't read training file %s. Exiting.", 
+                        corpus_file.getName());
                     System.exit(1);
-                    break;
-            }
+                }
+                break;
+            case 'f':
+                input_file=new File(optarg_s); 
+                if (!input_file.canRead()){
+                    System.out.printf(
+                        "Can't read input file %s. Exiting.", 
+                        input_file.getName());
+                    System.exit(1);
+                }
+                break;
+            default:
+                System.out.print(help);
+                System.exit(1);
+                break;
+        }
 
-            if (corpus_file == null) {
-                corpus_file=new File(TRAINING_FILE);
-            } 
-            if (input_file == null) {
-                input_file=new File(DATA_FILE);
-            } 
+        if (corpus_file == null) {
+            corpus_file=new File(TRAINING_FILE);
+        } 
+        if (input_file == null) {
+            input_file=new File(DATA_FILE);
+        } 
 
 
         /* 
@@ -107,6 +107,7 @@ public class AINet {
          * with the final output first, so we'll stick with ints
          */
 
+        // Read the input data file
         FileReader fin;
         Scanner src;
         int[] row = new int[DIMENSIONS];
@@ -115,7 +116,7 @@ public class AINet {
             fin=new FileReader(input_file);
             src=new Scanner(fin);
 
-            int records=0, row_count=0;
+            int records=0;
             while(src.hasNext()){
                 row[records%DIMENSIONS]=src.nextInt();
                 if (records++%DIMENSIONS==DIMENSIONS-1){ 
@@ -131,18 +132,27 @@ public class AINet {
         }
         int[][] inputData=tempData.toArray(
             new int[DIMENSIONS][tempData.size()]);
-	    AINet ais=new AINet(inputData);  	
+	    AINet ais = new AINet(inputData,corpus_file);  	
+        System.out.println("Classification results: ");
+        for (int m=0; m < ais.Whole_Ag.length; m++){
+            for (int n=0; n < DIMENSIONS; n++){
+                System.out.printf("%.0f ", ais.Whole_Ag[m].AgValue[n]);
+            }
+            System.out.printf("%d\n",ais.Whole_Ag[m].AgClass);
+        }
 	}
 
-  private static final int NDimention=3;
     //bird training = 213
     //scene training = 3400
     //ground training = 6425
-    private static final int Training_AgScale=6425;
     //bird testing = 20584
     //scene testing = 18369
     //ground testing = 262144
-    private static final int AgScale=262144;
+    // private static final int Training_AgScale=6425;
+    // private static final int AgScale=262144;
+    private int Training_AgScale;
+    private int AgScale;
+
     private static final int max_iter = 500;
     private static int MaxValue=255;
     private static final int BaseScale=500;
@@ -159,7 +169,7 @@ public class AINet {
     private  Antigen Whole_Ag[];
     Dimension imageInDimension;
     int TRGB[][][];
-   // private static double upperbound = 3.0;
+    // private static double upperbound = 3.0;
     //private static double lowerbound = 1.0;
 
 
@@ -176,7 +186,7 @@ public class AINet {
      public static class Antigen
     {
 
-        public double AgValue[]=new  double[NDimention];
+        public double AgValue[]=new  double[DIMENSIONS];
         public int AgClass=0;
         public void setValue(int i, double f)
         {
@@ -186,10 +196,10 @@ public class AINet {
     public static class Antibody
     {
 
-        private double AbValue[]=new double[NDimention];
+        private double AbValue[]=new double[DIMENSIONS];
          public Antibody()
         {
-        for(int i=0;i<NDimention;i++)
+        for(int i=0;i<DIMENSIONS;i++)
         this.AbValue[i]=0;
         }
         private double Affinity=0;
@@ -213,7 +223,7 @@ public class AINet {
     public static double getAffinity(Antigen Ag, Antibody Ab)
     {
         double EuclidianDistance = 0;
-        for(int i=0;i<NDimention;i++)
+        for(int i=0;i<DIMENSIONS;i++)
             if(Ag!=null&&Ab!=null)
             //EuclidianDistance=(double)EuclidianDistance+((Ag.AgValue[i]-Ab.AbValue[i])*(Ag.AgValue[i]-Ab.AbValue[i]));
 
@@ -226,7 +236,7 @@ public class AINet {
     public static double getAffinity(Antibody Ab1, Antibody Ab2)
     {
         double EuclidianDistance = 0;
-        for(int i=0;i<NDimention;i++)
+        for(int i=0;i<DIMENSIONS;i++)
             if(Ab1!=null&&Ab2!=null)
            //  EuclidianDistance=(double)EuclidianDistance+((Ab1.AbValue[i]-Ab2.AbValue[i])*(Ab1.AbValue[i]-Ab2.AbValue[i]));
        // return (double)(1/1+Math.sqrt(EuclidianDistance));
@@ -242,7 +252,7 @@ public class AINet {
     {
          if(Ab1!=null&&Ab2!=null)
          {
-        for(int i=0;i<NDimention;i++)
+        for(int i=0;i<DIMENSIONS;i++)
           Ab1.AbValue[i]=Ab2.AbValue[i];
 
         Ab1.AbClass=Ab2.AbClass;
@@ -288,7 +298,7 @@ public class AINet {
        // clone_count = 1;//rand.nextInt(3)+1;
             for(j = 0;j < clone_count; j++){
                 ab = new Antibody();
-              /*  for(k = 0;k<NDimention;k++){
+              /*  for(k = 0;k<DIMENSIONS;k++){
                 if(AbBase[i].Affinity/2>rand.nextDouble())
                 ab.AbValue[k]=(double) (AbBase[i].AbValue[k]);
                 else
@@ -323,12 +333,12 @@ public class AINet {
     }
 
     //Mutate the clone population inversly proportional to affinity
-    public static void Affinity_Maturation(ArrayList<Antibody> clonal_population,Antibody[] AbBase,Antigen[] Training_Ag, double correctness){
+    public void Affinity_Maturation(ArrayList<Antibody> clonal_population,Antibody[] AbBase,Antigen[] Training_Ag, double correctness){
 
         int total_clone_count = clonal_population.size();
         for(int i = 0;i < total_clone_count;i++){
             float alpha = (float)(1/clonal_population.get(i).Affinity);
-            for(int j = 0;j<NDimention;j++){
+            for(int j = 0;j<DIMENSIONS;j++){
                 clonal_population.get(i).AbValue[j] = clonal_population.get(i).AbValue[j] +
                      alpha;//*(clonal_population.get(i).Ag.AgValue[j]-clonal_population.get(i).AbValue[j]);
             }
@@ -453,7 +463,7 @@ public class AINet {
 
 
     //Introduce diversity to continue the while loop
-    public static void Introduce_Diversity(ArrayList<Antibody> final_Reconstructed_Antibody_Pool,Antigen[] Training_Ag){
+    public void Introduce_Diversity(ArrayList<Antibody> final_Reconstructed_Antibody_Pool,Antigen[] Training_Ag){
 
         Random rand  = new Random();
         Antibody Ab ;
@@ -461,7 +471,7 @@ public class AINet {
         for(int i = 0;i<diversityCount;i++)
         {
             Ab = new Antibody();
-            for (int j = 0; j < NDimention; j++)
+            for (int j = 0; j < DIMENSIONS; j++)
             {
                Ab.setValue(j,MaxValue * rand.nextDouble());
             }
@@ -487,27 +497,79 @@ public class AINet {
                   }
     }
 
+    //Load the training set from a file and return it
+    public static Antigen[] get_training_set(File corpus_file){
+        Antigen Training_Ag[];
+        int Training_AgScale;
+        
+        FileReader fin=null;
+        Scanner src;
+
+        ArrayList<Antigen> temp_training_ag = new ArrayList<Antigen>();
+        Antigen cur_ag;
+        try{
+            fin=new FileReader(corpus_file);
+        } catch(IOException e){
+            System.out.printf("Cannot read training file %s\n", TRAINING_FILE);
+        }
+        if (fin == null){
+            System.exit(1);
+        }
+
+        src=new Scanner(fin);
+        
+        while (src.hasNextLine()) {
+            cur_ag=new Antigen();
+            try {
+                for(int j=0;j<DIMENSIONS;j++){
+                    cur_ag.AgValue[j]=src.nextDouble();
+                }
+                cur_ag.AgClass=src.nextInt();
+                temp_training_ag.add(cur_ag);
+            } catch(java.util.InputMismatchException e){
+                System.out.println("Unexpected token found in training set.");
+                System.out.print(e);
+            } catch(java.util.NoSuchElementException e){
+                System.out.println("Wrong number of columns in training set.");
+                System.out.print(e);
+            }
+        }
+
+        //*FIXME* These should all be using Lists 
+        Training_AgScale=temp_training_ag.size();
+        Training_Ag=temp_training_ag.toArray(
+            new Antigen[Training_AgScale]);
+
+        System.out.println("Dumping training set:");
+        for(int i=0; i < Training_AgScale; i++){
+            System.out.printf("[%d]: %s\n", i, Training_Ag[i]);
+        }
+        return Training_Ag;
+    }
 
 
-    public void setupAINet(Antigen Whole_Ag[]) throws IOException {
+
+    public void setupAINet(Antigen Whole_Ag[], Antigen Training_Ag[]){
+
 
         Antibody Initial_Ab[]=new Antibody[Initial_AbScale];
-     Antibody AbBase[]=new Antibody[BaseScale];
-     //private  Antigen Whole_Ag[]=new Antigen[AgScale];
-      Antigen Training_Ag[]=new Antigen[Training_AgScale];
-      ArrayList<Antibody> Reconstructed_Antibody_Pool = new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
-      ArrayList<Antibody> final_Reconstructed_Antibody_Pool = new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
-      ArrayList<Antibody> clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
-      ArrayList<Antibody> final_clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
-     //   initialize(Initial_Ab,AbBase ,Whole_Ag,Training_Ag);
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
+        Antibody AbBase[]=new Antibody[BaseScale];
+        //private  Antigen Whole_Ag[]=new Antigen[AgScale];
+        ArrayList<Antibody> Reconstructed_Antibody_Pool = 
+            new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
+        ArrayList<Antibody> final_Reconstructed_Antibody_Pool = 
+            new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
+        ArrayList<Antibody> clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
+        ArrayList<Antibody> final_clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
+        //   initialize(Initial_Ab,AbBase ,Whole_Ag,Training_Ag);
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
       //randomly generate all the antibodies
         Random random=new Random();
 
         for(int i=0;i<Initial_AbScale;i++)
         { Initial_Ab[i]=new Antibody();
-            for(int j=0;j<NDimention;j++)
+            for(int j=0;j<DIMENSIONS;j++)
             {
              // random=new Random();
                 if(Initial_Ab[i]!=null)
@@ -520,28 +582,7 @@ public class AINet {
 // here
 
 //Initialise the training antigen
-        FileReader fin;
-        Scanner src;
 
-        try{
-        fin=new FileReader(TRAINING_FILE);
-        src=new Scanner(fin);
-
-        for(int i=0;i<Training_AgScale;i++)
-        {
-            Training_Ag[i]=new Antigen();
-            for(int j=0;j<NDimention;j++)
-         {
-
-             if(Training_Ag[i]!=null)
-             Training_Ag[i].AgValue[j]=src.nextDouble();
-         }
-         if(src.hasNextInt())
-        Training_Ag[i].AgClass=src.nextInt();
-        }
-        }catch(IOException e){
-            System.out.print(e);
-        }
 
 
 //For each antibody find the highest affinity with any antigen and the class it belongs to
@@ -586,64 +627,58 @@ public class AINet {
                   }
 
 
-      //////////////////////////////////////////////////////////////////////////////////////////////////////////
-         int iter_count = 0;
-         double correctness_current_iteration = 0.0;
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////
+        int iter_count = 0;
+        double correctness_current_iteration = 0.0;
         // double correctness_previous_iteration = 0.0;
 
-         double[] y=new double[1000];
+        double[] y=new double[1000];
                         int m=0;
-         while(true){
-            
-                 correctness_current_iteration = Whole_Affinity(AbBase,Training_Ag,Training_AgScale);
-                System.out.println("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
-              if(correctness_current_iteration > 0.99 || m >=20 || iter_count > max_iter){
-                  System.out.print("Breaking while loop after "+iter_count+" times");
-                  break;
-             }
-              else
-              {
-                      iter_count++;
-                  Clonal_Expansion(AbBase,clonal_population,Training_Ag);
+        while(true){
+            correctness_current_iteration = 
+                Whole_Affinity(AbBase,Training_Ag,Training_AgScale);
+            System.out.println("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
+            if(correctness_current_iteration > 0.99 || m >=20 || 
+                    iter_count > max_iter){
+                System.out.printf("Breaking while loop after %d times.\n", 
+                    iter_count);
+                break;
+             } else {
+                iter_count++;
+                Clonal_Expansion(AbBase,clonal_population,Training_Ag);
+                Affinity_Maturation(clonal_population,AbBase,Training_Ag,
+                    correctness_current_iteration);
+                Metadynamics(clonal_population);
+                Clonal_Supression(clonal_population,final_clonal_population);
+                Network_Reconstruction(Reconstructed_Antibody_Pool, 
+                    final_clonal_population, AbBase);
+                Network_Interaction_Supression(Reconstructed_Antibody_Pool,
+                    final_Reconstructed_Antibody_Pool);
+                Introduce_Diversity(final_Reconstructed_Antibody_Pool,
+                    Training_Ag);
 
-                  Affinity_Maturation(clonal_population,AbBase,Training_Ag,correctness_current_iteration);
+                //Find the top 'baseScale' antibodies from the final
+                //reconstructed antibody pool and repeate the loop
 
+                int c=0;
+                for(int i=0;i<BaseScale;i++){
+                    AbBase[i]=new Antibody();
+                    equate(AbBase[i],final_Reconstructed_Antibody_Pool.get(i));
+                }
 
-
-
-
-                  Metadynamics(clonal_population);
-                  Clonal_Supression(clonal_population,final_clonal_population);
-                  /////////////////////////////////////////////////////////////////////////////////////////
-
-
-                  ///////////////////////////////////////////////////////////////////////////////////////////
-                  Network_Reconstruction(Reconstructed_Antibody_Pool, final_clonal_population, AbBase);
-                  Network_Interaction_Supression(Reconstructed_Antibody_Pool ,final_Reconstructed_Antibody_Pool);
-                  Introduce_Diversity(final_Reconstructed_Antibody_Pool,Training_Ag);
-
-
-//Find the top 'baseScale' antibodies from the final reconstructed antibody pool and repeate the loop
-
-              int c=0;
-              for(int i=0;i<BaseScale;i++)
-              {
-
-                 AbBase[i]=new Antibody();
-                      equate(AbBase[i],final_Reconstructed_Antibody_Pool.get(i));
-
-              }
-
-                  for(int j=0;j<10;j++)
-                  {
-                      for(int i=10;i<final_Reconstructed_Antibody_Pool.size();i++)
-                      if((AbBase[j].Affinity<final_Reconstructed_Antibody_Pool.get(i).Affinity))
-                      {
-                          equate(AbBase[j],final_Reconstructed_Antibody_Pool.get(i));
-                          c=i;
-                      }
-                  final_Reconstructed_Antibody_Pool.get(c).Affinity = 0;
-                  }
+                for(int j=0;j<10;j++) {
+                    for(int i=10;i<final_Reconstructed_Antibody_Pool.size();
+                            i++) {
+                        if((AbBase[j].Affinity<
+                            final_Reconstructed_Antibody_Pool.get(i).Affinity))
+                        {
+                            equate(AbBase[j],
+                                final_Reconstructed_Antibody_Pool.get(i));
+                            c=i;
+                        }
+                        final_Reconstructed_Antibody_Pool.get(c).Affinity = 0;
+                    } 
+                }
 
               }//end of else
 
@@ -713,13 +748,13 @@ public class AINet {
     // constructors will go away as soon as we can actually test things
     // *KILLME*
     public AINet(int[][][] TRGB) throws Exception {
-        this(TRGBto2dArray(TRGB));     
+        this(TRGBto2dArray(TRGB), new File(TRAINING_FILE));     
     }
 
     public static int[][] TRGBto2dArray(int[][][] TRGB){
         int row_len=TRGB[0][0].length;
         int col_len=TRGB[0].length;
-        int[][] inputData = new int[row_len*col_len][NDimention]; 
+        int[][] inputData = new int[row_len*col_len][DIMENSIONS]; 
         System.out.printf("Rows: %d, Cols: %s\n", row_len, col_len);
         //There are 4 bands, but we don't care about the transparency
         int bands=3;
@@ -742,7 +777,7 @@ public class AINet {
      * ImagePimps array conversions or the dimensions of what is being looked
      * at.
      */
-    public AINet(int[][] inputData) throws Exception{
+    public AINet(int[][] inputData, File corpus_file) throws Exception{
         //*KILLME* This makes sure that TRGB is initialized for getResults()
         //when this is the only constructor called. Since getResults should be
         //returning a flattened array anyway, the original dimensions are
@@ -757,7 +792,14 @@ public class AINet {
                 Whole_Ag[i].AgValue[j]=inputData[i][j];
             }
         }
-        setupAINet(Whole_Ag);
+
+        Antigen[] Training_Ag=get_training_set(corpus_file);
+        //*FIXME* We should be checking this when we use it, not relying on a
+        //global
+        AgScale=Whole_Ag.length;
+        Training_AgScale=Training_Ag.length;
+
+        setupAINet(Whole_Ag,Training_Ag);
     }
 
     public int[] getResults(){

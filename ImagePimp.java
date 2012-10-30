@@ -26,7 +26,7 @@ import javax.imageio.ImageIO;
 public class ImagePimp extends JFrame{
     public Container contentPane;
     public static JDesktopPane desktopPane;
-
+    private static final long serialVersionUID = 2123853712905017011L;
 
     public ImagePimp(){
 	super("ImagePimp");
