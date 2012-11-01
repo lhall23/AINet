@@ -135,10 +135,7 @@ public class AINet {
 	    AINet ais = new AINet(inputData,corpus_file);  	
         System.out.println("Classification results: ");
         for (int m=0; m < ais.Whole_Ag.length; m++){
-            for (int n=0; n < DIMENSIONS; n++){
-                System.out.printf("%.0f ", ais.Whole_Ag[m].AgValue[n]);
-            }
-            System.out.printf("%d\n",ais.Whole_Ag[m].AgClass);
+            System.out.println(ais.Whole_Ag[m]);
         }
 	}
 
@@ -153,7 +150,7 @@ public class AINet {
     private int Training_AgScale;
     private int AgScale;
 
-    private static final int max_iter = 500;
+    private static final int max_iter = 5;
     private static int MaxValue=255;
     private static final int BaseScale=500;
     private static final int diversityCount=BaseScale*3;
@@ -183,38 +180,54 @@ public class AINet {
      private  ArrayList<Antibody> final_clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
 */
 
-     public static class Antigen
-    {
+    public static class Antigen {
 
-        public double AgValue[]=new  double[DIMENSIONS];
+        public double AgValue[]=new double[DIMENSIONS];
         public int AgClass=0;
-        public void setValue(int i, double f)
-        {
+
+        public void setValue(int i, double f) {
             this.AgValue[i]=f;
         }
+
+        public String toString(){
+            StringBuilder retString = new StringBuilder();
+            for (int i=0; i < DIMENSIONS; i++){
+                retString.append(String.format("%.0f ", this.AgValue[i]));
+            }
+            retString.append(String.format("%d",this.AgClass));
+            return retString.toString();
+        }
     }
-    public static class Antibody
-    {
+
+    public static class Antibody {
 
         private double AbValue[]=new double[DIMENSIONS];
-         public Antibody()
-        {
-        for(int i=0;i<DIMENSIONS;i++)
-        this.AbValue[i]=0;
-        }
         private double Affinity=0;
         private int AbClass=0;
         private Antigen Ag = new Antigen();
+        
+        public Antibody() {
+            for(int i=0;i<DIMENSIONS;i++){
+                this.AbValue[i]=0;
+            }
+        }
 
-
-        public void setValue(int i, double f)
-        {
+        public void setValue(int i, double f) {
             this.AbValue[i]=f;
         }
 
-        public void setAntigen(Antigen Ag)
-        {
+        public void setAntigen(Antigen Ag) {
             this.Ag=Ag;
+        }
+
+        public String toString(){
+            StringBuilder retString = new StringBuilder();
+            for (int i=0; i < DIMENSIONS; i++){
+                retString.append(String.format("%.0f ", this.AbValue[i]));
+            }
+            retString.append(String.format("%d ",this.AbClass));
+            retString.append(String.format("%f",this.Affinity));
+            return retString.toString();
         }
 
     }
@@ -327,7 +340,7 @@ public class AINet {
                   }
      /*   System.out.print("\nclonal expansion :\n");
         for(i = 0;i < clonal_population.size(); i++)
-            System.out.println(clonal_population.get(i).AbValue[0]+" "+clonal_population.get(i).AbValue[1]+" "+clonal_population.get(i).AbValue[2]+" "+clonal_population.get(i).AbValue[3]+" class "+clonal_population.get(i).AbClass);
+            System.out.println(clonal_population.get(i));
       *
       */
     }
@@ -367,7 +380,7 @@ public class AINet {
 
        /* System.out.println("\nafter affinity maturation :\n" );
         for(int i = 0;i < clonal_population.size(); i++)
-            System.out.println(clonal_population.get(i).AbValue[0]+" "+clonal_population.get(i).AbValue[1]+" "+clonal_population.get(i).AbValue[2]+" "+clonal_population.get(i).AbValue[3]+" class"+clonal_population.get(i).AbClass);
+            System.out.println(clonal_population.get(i));
 */
        /* Antibody ab = new Antibody();
         for(int j = 0;j<clonal_population.size();j++){
@@ -402,7 +415,7 @@ public class AINet {
         }
          /*   System.out.println("\n after metadynamics :\n" );
         for(int i = 0;i < clonal_population.size(); i++)
-            System.out.println(clonal_population.get(i).AbValue[0]+" "+clonal_population.get(i).AbValue[1]+" "+clonal_population.get(i).AbValue[2]+" "+clonal_population.get(i).AbValue[3]+" class"+clonal_population.get(i).AbClass);
+            System.out.println(clonal_population.get(i));
         */
     }
 
@@ -705,7 +718,7 @@ public class AINet {
          }//end of while
 
          for(int i=0;i<BaseScale;i++)
-            System.out.println(AbBase[i].AbValue[0]+" "+AbBase[i].AbValue[1]+" "+AbBase[i].AbValue[2]+" "+AbBase[i].AbClass+" "+AbBase[i].Affinity);
+            System.out.println(AbBase[i]);
             
            //  System.out.println("Whole Affinity = "+Whole_Affinity(AbBase,Whole_Ag,AgScale));
            //  System.out.println("Total number of iterations = "+iter_count);
