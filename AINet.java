@@ -10,13 +10,15 @@ import java.util.Scanner;
 import java.io.FileReader;
 import java.awt.Dimension;
 import java.awt.Image;
+import java.text.ParseException;
+import java.io.BufferedReader;
 
 
 public class AINet {
 
     private static final String TRAINING_FILE="test_data/ground_training.txt";
     private static final String DATA_FILE="test_data/ground.txt";
-    private static final int DIMENSIONS=3;
+    private static int DIMENSIONS=3;
 
     // *FIXME* Not a global. This goes away with refactoring
     private static File input_file;
@@ -24,6 +26,7 @@ public class AINet {
 	public static void main (String[] args) throws Exception{
         String optarg_s="";
         File corpus_file=null;
+        String msg="";
 
         final String help = "Usage: \n\t-h (help)\n" +
             "\t-t FILENAME \tTraining set\n" +
@@ -32,17 +35,10 @@ public class AINet {
             "\t-T          \ttesting output\n";
 
                 // Parse arguments... where's my beloved optarg?!
-        int i= 0;
+        int i=0;
         char opt=' ';
         while ((i < args.length) && (args[i].charAt(0) == '-')){
-            //If there's an argument after the option, grab it.
-            //Make sure we're not testing against the last round
-            optarg_s="";
-            if (args[i].length() > 2){
-                optarg_s=args[i].substring(2);
-            }
             opt = args[i++].charAt(1);
-
             //Parse arguments that don't take options 
             switch(opt){
                 case 'h':
@@ -63,37 +59,47 @@ public class AINet {
                     optarg_s=args[i++];
                 }            
             }
-        }
 
-        switch(opt){
-            case 't':
-                corpus_file=new File(optarg_s); 
-                if (!corpus_file.canRead()){
-                    System.out.printf(
-                        "Can't read training file %s. Exiting.", 
-                        corpus_file.getName());
+            switch(opt){
+                case 't':
+                    msg=String.format("Loading training file \"%s\".", optarg_s);
+                    System.out.println(msg);
+                    corpus_file=new File(optarg_s); 
+                    if (!corpus_file.canRead()){
+                        System.out.printf(
+                            "Can't read training file %s. Exiting.", 
+                            corpus_file.getName());
+                        System.exit(1);
+                    }
+                    break;
+                case 'f':
+                    msg=String.format(
+                        "Loading data file \"%s\".", optarg_s);
+                    System.out.println(msg);
+                    input_file=new File(optarg_s); 
+                    if (!input_file.canRead()){
+                        System.out.printf(
+                            "Can't read input file %s. Exiting.", 
+                            input_file.getName());
+                        System.exit(1);
+                    }
+                    break;
+                default:
+                    System.out.print(help);
                     System.exit(1);
-                }
-                break;
-            case 'f':
-                input_file=new File(optarg_s); 
-                if (!input_file.canRead()){
-                    System.out.printf(
-                        "Can't read input file %s. Exiting.", 
-                        input_file.getName());
-                    System.exit(1);
-                }
-                break;
-            default:
-                System.out.print(help);
-                System.exit(1);
-                break;
+                    break;
+            }
         }
 
         if (corpus_file == null) {
+            msg=String.format("Loading default training file \"%s\".", 
+                TRAINING_FILE);
+            System.out.println(msg);
             corpus_file=new File(TRAINING_FILE);
         } 
         if (input_file == null) {
+            msg=String.format("Loading default data file \"%s\".", DATA_FILE);
+            System.out.println(msg);
             input_file=new File(DATA_FILE);
         } 
 
@@ -108,30 +114,20 @@ public class AINet {
          */
 
         // Read the input data file
-        FileReader fin;
-        Scanner src;
-        int[] row = new int[DIMENSIONS];
-        ArrayList<int[]> tempData = new ArrayList<int[]>();
-        try{
-            fin=new FileReader(input_file);
-            src=new Scanner(fin);
-
-            int records=0;
-            while(src.hasNext()){
-                row[records%DIMENSIONS]=src.nextInt();
-                if (records++%DIMENSIONS==DIMENSIONS-1){ 
-                    tempData.add(row);
-                }
+        BufferedReader reader = 
+            new BufferedReader(new FileReader(input_file));
+        ArrayList<Antigen> tempData = new ArrayList<Antigen>();
+        String line_in=null;
+        while((line_in=reader.readLine()) != null){
+            if (line_in.equals("")){
+                System.out.println("Blank line in input file skipped");
+                continue;
             }
-            if (records%DIMENSIONS != 0) {
-                System.out.print("Unexpected data size in " + 
-                    DATA_FILE + "\n");
-            }
-        }catch(IOException e){
-            System.out.print(e);
+            tempData.add(Antigen.valueOf(line_in));
         }
-        int[][] inputData=tempData.toArray(
-            new int[DIMENSIONS][tempData.size()]);
+
+        Antigen[] inputData=tempData.toArray(new Antigen[tempData.size()]);
+        
 	    AINet ais = new AINet(inputData,corpus_file);  	
         System.out.println("Classification results: ");
         for (int m=0; m < ais.Whole_Ag.length; m++){
@@ -163,7 +159,7 @@ public class AINet {
      * New Class vars
      */
 
-    private  Antigen Whole_Ag[];
+    private Antigen Whole_Ag[];
     Dimension imageInDimension;
     int TRGB[][][];
     // private static double upperbound = 3.0;
@@ -180,40 +176,99 @@ public class AINet {
      private  ArrayList<Antibody> final_clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
 */
 
-    public static class Antigen {
+    public static abstract class Cell implements Cloneable{
+        private static final int DEFAULT_CLASS=0;
+        private static final int DEFAULT_VAL=0;
+        //Regex to split input strings
+        protected static String split_on= "[, \t]+";
 
-        public double AgValue[]=new double[DIMENSIONS];
-        public int AgClass=0;
+        public double value[]=new double[DIMENSIONS];
+        public int classification;
+
+        //Characters on which to create the 
+
+        public Cell(double[] values, int classification){
+            for(int i=0;i<DIMENSIONS;i++){
+                this.value[i]=values[i];
+            }
+            this.classification=classification;
+        }
+
+        public Cell(double[] values){
+            this(values,DEFAULT_CLASS);
+        }
+
+        public Cell(){
+            for(int i=0;i<DIMENSIONS;i++){
+                this.value[i]=DEFAULT_VAL;
+            }
+            this.classification=DEFAULT_CLASS;
+        }
 
         public void setValue(int i, double f) {
-            this.AgValue[i]=f;
+            this.value[i]=f;
         }
 
         public String toString(){
             StringBuilder retString = new StringBuilder();
             for (int i=0; i < DIMENSIONS; i++){
-                retString.append(String.format("%.0f ", this.AgValue[i]));
+                retString.append(String.format("%.0f ", this.value[i]));
             }
-            retString.append(String.format("%d",this.AgClass));
+            retString.append(String.format("%d",this.classification));
             return retString.toString();
         }
+
     }
+    
+    // This is represents the vectors we will be classifying
+    public static class Antigen extends Cell{
 
-    public static class Antibody {
-
-        private double AbValue[]=new double[DIMENSIONS];
-        private double Affinity=0;
-        private int AbClass=0;
-        private Antigen Ag = new Antigen();
-        
-        public Antibody() {
-            for(int i=0;i<DIMENSIONS;i++){
-                this.AbValue[i]=0;
-            }
+        public double AgValue[];
+        public Antigen(){
+            super();
+        }
+        public Antigen(double[] values){
+            super(values);
         }
 
         public void setValue(int i, double f) {
-            this.AbValue[i]=f;
+            this.value[i]=f;
+        }
+
+        public static Antigen valueOf(String input) throws ParseException{
+            String[] str_values;
+            double[] num_values=new double[DIMENSIONS];
+
+            str_values=input.split(Cell.split_on); 
+            //Check to see if we got a string with the right number of
+            //dimensions plus a classification
+            if (str_values.length != DIMENSIONS){
+                String msg= 
+                    "Wrong number of dimensions for current AINet instance." +
+                    String.format("Expected %d, got %d in \"%s\"", DIMENSIONS, 
+                        str_values.length,input);
+                throw new ParseException(msg,-1);
+            }
+
+            for(int i=0; i < DIMENSIONS; i++){
+                num_values[i]=Double.valueOf(str_values[i]);
+            }
+            return new Antigen(num_values);
+        }
+    }
+
+    //These represent the vectors used to classify data
+    public static class Antibody extends Cell{
+
+        private double Affinity=0;
+        private Antigen Ag = new Antigen();
+
+        public Antibody(){
+            super();
+        }
+
+        public Antibody(double[] values, int classification){
+            super(values,classification);
         }
 
         public void setAntigen(Antigen Ag) {
@@ -221,15 +276,31 @@ public class AINet {
         }
 
         public String toString(){
-            StringBuilder retString = new StringBuilder();
-            for (int i=0; i < DIMENSIONS; i++){
-                retString.append(String.format("%.0f ", this.AbValue[i]));
-            }
-            retString.append(String.format("%d ",this.AbClass));
-            retString.append(String.format("%f",this.Affinity));
-            return retString.toString();
+            return String.format("%s %f",super.toString(), Affinity);
         }
 
+        public static Antibody valueOf(String input) throws ParseException{
+            String[] str_values;
+            double[] num_values=new double[DIMENSIONS];
+            int classification;
+
+            str_values=input.split(Cell.split_on); 
+            //Check to see if we got a string with the right number of
+            //dimensions 
+            if (str_values.length != DIMENSIONS + 1){
+                String msg= 
+                    "Wrong number of dimensions for current AINet instance." +
+                    String.format("Expected %d, got %d in \"%s\"", DIMENSIONS, 
+                        str_values.length -1,input);
+                throw new ParseException(msg,-1);
+            }
+
+            for(int i=0; i < DIMENSIONS; i++){
+                num_values[i]=Double.valueOf(str_values[i]);
+            }
+            classification=Integer.valueOf(str_values[DIMENSIONS]);   
+            return new Antibody(num_values,classification);
+        }
     }
 
     //To calculate the affinity between given Antibody and Antigen
@@ -238,10 +309,10 @@ public class AINet {
         double EuclidianDistance = 0;
         for(int i=0;i<DIMENSIONS;i++)
             if(Ag!=null&&Ab!=null)
-            //EuclidianDistance=(double)EuclidianDistance+((Ag.AgValue[i]-Ab.AbValue[i])*(Ag.AgValue[i]-Ab.AbValue[i]));
+            //EuclidianDistance=(double)EuclidianDistance+((Ag.value[i]-Ab.value[i])*(Ag.value[i]-Ab.value[i]));
 
         //return (double)(1/1+Math.sqrt(EuclidianDistance));
-                EuclidianDistance = EuclidianDistance+Math.abs(Ag.AgValue[i] - Ab.AbValue[i]);
+                EuclidianDistance = EuclidianDistance+Math.abs(Ag.value[i] - Ab.value[i]);
         return (1/EuclidianDistance);
     }
 
@@ -251,9 +322,9 @@ public class AINet {
         double EuclidianDistance = 0;
         for(int i=0;i<DIMENSIONS;i++)
             if(Ab1!=null&&Ab2!=null)
-           //  EuclidianDistance=(double)EuclidianDistance+((Ab1.AbValue[i]-Ab2.AbValue[i])*(Ab1.AbValue[i]-Ab2.AbValue[i]));
+           //  EuclidianDistance=(double)EuclidianDistance+((Ab1.value[i]-Ab2.value[i])*(Ab1.value[i]-Ab2.value[i]));
        // return (double)(1/1+Math.sqrt(EuclidianDistance));
-                EuclidianDistance = EuclidianDistance+Math.abs(Ab1.AbValue[i] - Ab2.AbValue[i]);
+                EuclidianDistance = EuclidianDistance+Math.abs(Ab1.value[i] - Ab2.value[i]);
         return (1/EuclidianDistance);
     }
 
@@ -266,9 +337,9 @@ public class AINet {
          if(Ab1!=null&&Ab2!=null)
          {
         for(int i=0;i<DIMENSIONS;i++)
-          Ab1.AbValue[i]=Ab2.AbValue[i];
+          Ab1.value[i]=Ab2.value[i];
 
-        Ab1.AbClass=Ab2.AbClass;
+        Ab1.classification=Ab2.classification;
         Ab1.Affinity = Ab2.Affinity;
         Ab1.Ag = Ab2.Ag;
         }
@@ -288,7 +359,7 @@ public class AINet {
                 if(j==0||(getAffinity(Ag[i],ab)<getAffinity(Ag[i],Ab[j])))
                     equate(ab,Ab[j]);
             if(Ag[i]!=null&&ab!=null)
-            if(Ag[i].AgClass==ab.AbClass)
+            if(Ag[i].classification==ab.classification)
                 correct++;
         }
         return (double)correct/(double)AgScale;
@@ -313,9 +384,9 @@ public class AINet {
                 ab = new Antibody();
               /*  for(k = 0;k<DIMENSIONS;k++){
                 if(AbBase[i].Affinity/2>rand.nextDouble())
-                ab.AbValue[k]=(double) (AbBase[i].AbValue[k]);
+                ab.value[k]=(double) (AbBase[i].value[k]);
                 else
-                ab.AbValue[k]=rand.nextDouble()*MaxValue;
+                ab.value[k]=rand.nextDouble()*MaxValue;
                 }*/
                 equate(ab,AbBase[i]);
                 clonal_population.add(ab);
@@ -332,7 +403,7 @@ public class AINet {
                             if(clonal_population.get(j)!=null&&Training_Ag[i]!=null)
                             {
                             clonal_population.get(j).Affinity = getAffinity(Training_Ag[i],clonal_population.get(j));
-                            clonal_population.get(j).AbClass=Training_Ag[i].AgClass;
+                            clonal_population.get(j).classification=Training_Ag[i].classification;
                             clonal_population.get(j).Ag=Training_Ag[i];
                             }
                         }
@@ -352,8 +423,8 @@ public class AINet {
         for(int i = 0;i < total_clone_count;i++){
             float alpha = (float)(1/clonal_population.get(i).Affinity);
             for(int j = 0;j<DIMENSIONS;j++){
-                clonal_population.get(i).AbValue[j] = clonal_population.get(i).AbValue[j] +
-                     alpha;//*(clonal_population.get(i).Ag.AgValue[j]-clonal_population.get(i).AbValue[j]);
+                clonal_population.get(i).value[j] = clonal_population.get(i).value[j] +
+                     alpha;//*(clonal_population.get(i).Ag.value[j]-clonal_population.get(i).value[j]);
             }
         }
 
@@ -371,7 +442,7 @@ public class AINet {
                             if(clonal_population.get(j)!=null&&Training_Ag[i]!=null)
                             {
                             clonal_population.get(j).Affinity = getAffinity(Training_Ag[i],clonal_population.get(j));
-                            clonal_population.get(j).AbClass=Training_Ag[i].AgClass;
+                            clonal_population.get(j).classification=Training_Ag[i].classification;
                             clonal_population.get(j).Ag=Training_Ag[i];
                             }
                         }
@@ -502,7 +573,7 @@ public class AINet {
                             if(final_Reconstructed_Antibody_Pool.get(j)!=null&&Training_Ag[i]!=null)
                             {
                             final_Reconstructed_Antibody_Pool.get(j).Affinity = getAffinity(Training_Ag[i],final_Reconstructed_Antibody_Pool.get(j));
-                            final_Reconstructed_Antibody_Pool.get(j).AbClass=Training_Ag[i].AgClass;
+                            final_Reconstructed_Antibody_Pool.get(j).classification=Training_Ag[i].classification;
                             final_Reconstructed_Antibody_Pool.get(j).Ag=Training_Ag[i];
                             }
                         }
@@ -535,9 +606,9 @@ public class AINet {
             cur_ag=new Antigen();
             try {
                 for(int j=0;j<DIMENSIONS;j++){
-                    cur_ag.AgValue[j]=src.nextDouble();
+                    cur_ag.value[j]=src.nextDouble();
                 }
-                cur_ag.AgClass=src.nextInt();
+                cur_ag.classification=src.nextInt();
                 temp_training_ag.add(cur_ag);
             } catch(java.util.InputMismatchException e){
                 System.out.println("Unexpected token found in training set.");
@@ -609,7 +680,7 @@ public class AINet {
                     if(Initial_Ab[j]!=null&&Training_Ag[i]!=null)
                     {
                     Initial_Ab[j].Affinity = getAffinity(Training_Ag[i],Initial_Ab[j]);
-                    Initial_Ab[j].AbClass=Training_Ag[i].AgClass;
+                    Initial_Ab[j].classification=Training_Ag[i].classification;
                     Initial_Ab[j].Ag=Training_Ag[i];
                     }
                 }
@@ -732,7 +803,7 @@ public class AINet {
             {
                 if(getAffinity(Whole_Ag[i],AbBase[j])>getAffinity(Whole_Ag[i],ab))
                 {
-                    Whole_Ag[i].AgClass=AbBase[j].AbClass;
+                    Whole_Ag[i].classification=AbBase[j].classification;
                     equate(ab,AbBase[j]);
                 }
             }
@@ -802,7 +873,7 @@ public class AINet {
         for (int i=0; i < inputData.length; i++){
             Whole_Ag[i]=new Antigen();
             for (int j=0; j < inputData[0].length; j++){
-                Whole_Ag[i].AgValue[j]=inputData[i][j];
+                Whole_Ag[i].value[j]=inputData[i][j];
             }
         }
 
@@ -811,7 +882,31 @@ public class AINet {
         //global
         AgScale=Whole_Ag.length;
         Training_AgScale=Training_Ag.length;
+        System.out.println("Antibodies:");
+        for(int n=0; n < Training_Ag.length; n++){
+            System.out.println(Training_Ag[n]);
+        }
+        setupAINet(Whole_Ag,Training_Ag);
+    }
 
+    public AINet(Antigen[] inputData, File corpus_file) throws Exception{
+        //*KILLME* This makes sure that TRGB is initialized for getResults()
+        //when this is the only constructor called. Since getResults should be
+        //returning a flattened array anyway, the original dimensions are
+        //irrelevant
+        this.TRGB=new int[4][inputData.length][1];
+
+        Whole_Ag=inputData;
+
+        Antigen[] Training_Ag=get_training_set(corpus_file);
+        //*FIXME* We should be checking this when we use it, not relying on a
+        //global
+        AgScale=Whole_Ag.length;
+        Training_AgScale=Training_Ag.length;
+        System.out.println("Antibodies:");
+        for(int n=0; n < Training_Ag.length; n++){
+            System.out.println(Training_Ag[n]);
+        }
         setupAINet(Whole_Ag,Training_Ag);
     }
 
@@ -824,31 +919,31 @@ public class AINet {
         {
             if(Whole_Ag[i] != null) {
                 TRGB[0][column][row]=255;
-                if(Whole_Ag[i].AgClass==1)
+                if(Whole_Ag[i].classification==1)
                 {
                     TRGB[1][column][row]=255;//55;
                     TRGB[2][column][row]=222;//255;//128;
                     TRGB[3][column][row]=10;//78;
                 }
-                else if(Whole_Ag[i].AgClass==2)
+                else if(Whole_Ag[i].classification==2)
                 {
                     TRGB[1][column][row]=0;
                     TRGB[2][column][row]=0;//64;//75;
                     TRGB[3][column][row]=215;//78;
                 }
-                else if(Whole_Ag[i].AgClass==3)
+                else if(Whole_Ag[i].classification==3)
                 {
                     TRGB[1][column][row]=0;
                     TRGB[2][column][row]=215;
                     TRGB[3][column][row]=0;
                 }
-                else if(Whole_Ag[i].AgClass==4)
+                else if(Whole_Ag[i].classification==4)
                 {
                     TRGB[1][column][row]=215;
                     TRGB[2][column][row]=0;
                     TRGB[3][column][row]=0;
                 }
-                else if(Whole_Ag[i].AgClass==5)
+                else if(Whole_Ag[i].classification==5)
                 {
                     TRGB[1][column][row]=0;
                     TRGB[2][column][row]=10;
