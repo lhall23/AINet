@@ -14,3 +14,6 @@ build: clean $(OBJECTS)
 
 clean:
 	rm -rf *.class
+
+benchmarks: 
+	utils/benchmarks.sh

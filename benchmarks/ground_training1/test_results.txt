@@ -1,0 +1,13 @@
+commit 5a2f7be819cc30b6039c9f905b0d493200de2d36
+Author: Lee Hall <lhall@newfields.com>
+Date:   Thu Nov 8 23:03:58 2012 -0500\nScale: 500\tIterations: 500
+Results: 22300/23846 (.93%)
+Results: 22082/23846 (.92%)
+Results: 21470/23846 (.90%)
+Results: 23539/23846 (.98%)
+Results: 23682/23846 (.99%)
+Results: 22955/23846 (.96%)
+Results: 23137/23846 (.97%)
+Results: 23118/23846 (.96%)
+Results: 23397/23846 (.98%)
+Results: 23061/23846 (.96%)

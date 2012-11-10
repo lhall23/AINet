@@ -16,10 +16,9 @@ SIZE=10
     exit 1
 }
 
-
 len="$(wc -l $INPUT_FILE | cut -f1 -d\  )"
 for line in $(seq $(( $len / $SIZE )) ); do
     sed -n "$(( $RANDOM % $len ))p;" $INPUT_FILE
 done > $OUTPUT_TRAIN
 
-cat $INPUT_FILE | sed 's/[^ ]*$//' > $OUTPUT_DATA
+cat $INPUT_FILE | sed 's/[, \t][^,\t ]*$//' > $OUTPUT_DATA
