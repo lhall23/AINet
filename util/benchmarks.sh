@@ -23,10 +23,10 @@ TRIALS=5
 }
 
 
-# Run the current version of AINet against each of these tests $TRIALS times 
-# Record individual results in each test directory, and a summary of all the
-# trials of each test in  
-make AINet
+#Make sure we're using the current version
+JAR_TMP=$(mktemp)
+make AINet.jar
+mv AINet.jar "$JAR_TMP"
 
 #SELECT OR INSERT record for current software revision.
 SOURCE_ID="$(
@@ -60,7 +60,7 @@ for TEST in "$BENCH_DIR"/*; do
     SUM=0;
     for num in $( seq $TRIALS ); do 
         start_time="$(date)"
-        java AINet -t "${TEST}/train.txt" -f "${TEST}/test_data.txt" \
+        java -jar "$JAR_TMP" -t "${TEST}/train.txt" -f "${TEST}/test_data.txt" \
             -o "${OUTPUT}"  -d "${DIMENSIONS}" -s "${SCALE}" \
             -i "${ITERATIONS}" 
         end_time="$(date)"

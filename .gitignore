@@ -1,3 +1,4 @@
 *.class
+*.jar
 results.txt
 test_results.txt
