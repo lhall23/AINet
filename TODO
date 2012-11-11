@@ -1,7 +1,8 @@
-Figure out why we only end up classifying one of the original points.
 Move ImagePimp methods out of the AINet class
 Move image methods out of ImagePimp class
 Convert AINet entirely to ArrayLists so that sparse arrays and sorting can be
 	handled appropriately
-toString(), clone(), equals(), and better constructor functions for the Antigen
-	and Antibody classes
+
+Cell.getClosest(ArrayList<Cell>)
+Cell.getClosest(Cell[])
+~                          

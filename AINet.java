@@ -21,8 +21,8 @@ public class AINet {
     // Default values
     private static final String DEFAULT_TRAINING_FILE="test_data/ground_training.txt";
     private static final String DEFAULT_DATA_FILE="test_data/ground.txt";
-    private static final int DEFAULT_POPULATION_SIZE=500;
-    private static final int DEFAULT_MAX_BREEDING_ITER = 500;
+    private static final int DEFAULT_POPULATION_SIZE=100;
+    private static final int DEFAULT_MAX_BREEDING_ITER = 100;
     private static final int DEFAULT_DIMENSIONS = 3;
     private static boolean DEBUG=false;
 
@@ -273,7 +273,7 @@ public class AINet {
      private  ArrayList<Antibody> final_clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
 */
 
-    public static abstract class Cell implements Cloneable{
+    public static abstract class Cell{
         protected static final int DEFAULT_CLASS=0;
         private static final int DEFAULT_VAL=0;
         //Regex to split input strings
@@ -315,6 +315,20 @@ public class AINet {
             }
             retString.append(String.format("%d",this.classification));
             return retString.toString();
+        }
+
+        //*FIXME* We should calculate this correctly, but first, refactor
+        public double getAffinity(Cell neighbor){
+            double EuclidianDistance = 0;
+            for(int i=0;i<Dimensions;i++) {
+                //EuclidianDistance=(double)EuclidianDistance+
+                //  ((this.value[i]-neighbor.value[i])*
+                //  (this.value[i]-neighbor.value[i]));
+                //return (double)(1/1+Math.sqrt(EuclidianDistance));
+                EuclidianDistance = EuclidianDistance+
+                    Math.abs(this.value[i] - neighbor.value[i]);
+            }
+            return (1/EuclidianDistance);
         }
 
         //Promote an array of ints to an array of doubles
@@ -443,101 +457,82 @@ public class AINet {
         }
     }
 
-
-    //To calculate the affinity between given Antibody and Antigen
-    public static double getAffinity(Antigen Ag, Antibody Ab)
-    {
-        double EuclidianDistance = 0;
-        for(int i=0;i<Dimensions;i++)
-            if(Ag!=null&&Ab!=null)
-            //EuclidianDistance=(double)EuclidianDistance+((Ag.value[i]-Ab.value[i])*(Ag.value[i]-Ab.value[i]));
-
-        //return (double)(1/1+Math.sqrt(EuclidianDistance));
-                EuclidianDistance = EuclidianDistance+Math.abs(Ag.value[i] - Ab.value[i]);
-        return (1/EuclidianDistance);
-    }
-
-    //To calculate the affinity between two antibodies
-    public static double getAffinity(Antibody Ab1, Antibody Ab2)
-    {
-        double EuclidianDistance = 0;
-        for(int i=0;i<Dimensions;i++)
-            if(Ab1!=null&&Ab2!=null)
-           //  EuclidianDistance=(double)EuclidianDistance+((Ab1.value[i]-Ab2.value[i])*(Ab1.value[i]-Ab2.value[i]));
-       // return (double)(1/1+Math.sqrt(EuclidianDistance));
-                EuclidianDistance = EuclidianDistance+Math.abs(Ab1.value[i] - Ab2.value[i]);
-        return (1/EuclidianDistance);
-    }
-
-//Used to find the overall correctness
-    public static double Whole_Affinity(Antibody []Ab,Antigen []Ag,int AgScale)
-    {
+    // Find the percentage of Ag[] which is classified the same as the closest
+    // element of Ab[]
+    //Used to find the overall correctness
+    public static double Whole_Affinity(Antibody []Ab,Antigen []Ag){
         int correct=0;
         Antibody ab = null;
-        ab=new Antibody();
-       // equle(ab,Ab[0]);
-        for(int i=0;i<AgScale;i++)
-        {
-            //*FIXME* You don't need a deep copy here
-            for(int j=0;j<BaseScale;j++)
-                if(j==0||(getAffinity(Ag[i],ab)<getAffinity(Ag[i],Ab[j])))
-                    ab=new Antibody(Ab[j]);
-            if(Ag[i]!=null&&ab!=null)
-            if(Ag[i].classification==ab.classification)
+        for(int i=0;i<Ag.length;i++){
+            for(int j=0;j<BaseScale;j++){
+                if(j==0||(Ag[i].getAffinity(ab)<Ag[i].getAffinity(Ab[j]))){
+                    ab=Ab[j];
+                }
+            }
+            if(Ag[i].classification==ab.classification){
                 correct++;
+            }
         }
-        return (double)correct/(double)AgScale;
+        return correct/(double)Ag.length;
     }
 
-//Generate clone_population
-    public void Clonal_Expansion(Antibody[] AbBase,ArrayList<Antibody> clonal_population,Antigen[] Training_Ag){
+    //Generate clone_population
+    public void Clonal_Expansion(Antibody[] AbBase,
+            ArrayList<Antibody> clonal_population,
+            Antigen[] Training_Ag){
 
         int clone_count = 0, i = 0,j = 0;
         Random rand = new Random();
         Antibody ab = null;
+        Antigen ag = null;
 
         //Generate clones for each antibody
-        for(i = 0;i < BaseScale; i++)
-        {
-            if((AbBase[i].Affinity/2) > rand.nextDouble())
+        for(i = 0;i < BaseScale; i++) {
+            // If Affinity is high, generate 3 clones, 
+            // otherwise randomly choose 1 or 2
+            if((AbBase[i].Affinity/2) > rand.nextDouble()) {
                 clone_count = 3;
-            else
+            } else {
                 clone_count = rand.nextInt(2) + 1;
-       // clone_count = 1;//rand.nextInt(3)+1;
+            }
             for(j = 0;j < clone_count; j++){
                 ab = new Antibody();
-              /*  for(int k = 0;k<Dimensions;k++){
-                if(AbBase[i].Affinity/2>rand.nextDouble())
-                ab.value[k]=(double) (AbBase[i].value[k]);
-                else
-                ab.value[k]=rand.nextDouble()*MaxValue;
-                }*/
+                    // //Perturb the clones?
+                    // for(int k = 0;k<Dimensions;k++){
+                    //     if(AbBase[i].Affinity/2>rand.nextDouble())
+                    //         ab.value[k]=(double) (AbBase[i].value[k]);
+                    //     else
+                    //         ab.value[k]=rand.nextDouble()*MaxValue;
+                    // }
                 ab=new Antibody(AbBase[i]);
                 clonal_population.add(ab);
+            }
+        }
+        // *FIXME* 
+        // Clean this mess up. Since these are just copies and aren't 
+        // being randomized, this doesn't do anything at all, unless the
+        // classification was already out of sync
+        //
+        // We should remove the null checks as well, and hunt down why the
+        // lists are getting mangled instead of just ignoring it.
+        //
+        // Classify the new clones against the training set.
+        for(j=0;j<clonal_population.size();j++){
+            for(i=0;i<Training_Ag.length;i++){
+                ab=clonal_population.get(j);
+                ag=Training_Ag[i];
+                if(ab!=null&& ag!=null){
+                    if(i==0||(ab.Affinity < ag.getAffinity(ab))){
+                        ab.Affinity=ag.getAffinity(ab);
+                        ab.classification=ag.classification;
+                        ab.Ag=ag;
+                    }
                 }
             }
-
-        for(j=0;j<clonal_population.size();j++)
-                  {
-                    for(i=0;i<Training_AgScale;i++)
-                     {
-                        if(clonal_population.get(j)!=null&&Training_Ag[i]!=null)
-                        if(i==0||(clonal_population.get(j).Affinity<getAffinity(Training_Ag[i],clonal_population.get(j))))
-                        {
-                            if(clonal_population.get(j)!=null&&Training_Ag[i]!=null)
-                            {
-                            clonal_population.get(j).Affinity = getAffinity(Training_Ag[i],clonal_population.get(j));
-                            clonal_population.get(j).classification=Training_Ag[i].classification;
-                            clonal_population.get(j).Ag=Training_Ag[i];
-                            }
-                        }
-                     }
-                  }
-     /*   System.out.print("\nclonal expansion :\n");
-        for(i = 0;i < clonal_population.size(); i++)
-            System.out.println(clonal_population.get(i));
-      *
-      */
+        }
+        // System.out.print("\nclonal expansion :\n");
+        // for(i = 0;i < clonal_population.size(); i++)
+        //     System.out.println(clonal_population.get(i));
     }
 
     //Mutate the clone population inversly proportional to affinity
@@ -561,12 +556,12 @@ public class AINet {
                 if(clonal_population.get(j)!=null&&Training_Ag[i]!=null){
                     if(i==0|| (
                             clonal_population.get(j).Affinity < 
-                                getAffinity(Training_Ag[i],
+                                Training_Ag[i].getAffinity(
                                     clonal_population.get(j)))) {
                         if(clonal_population.get(j)!=null&&
                                 Training_Ag[i]!=null){
                             clonal_population.get(j).Affinity = 
-                                getAffinity(Training_Ag[i],
+                                Training_Ag[i].getAffinity(
                                     clonal_population.get(j));
                             clonal_population.get(j).classification=
                                 Training_Ag[i].classification;
@@ -593,7 +588,7 @@ public class AINet {
                     ab=new Antibody(AbBase[k]);
                     AbBase[k]=new Antibody(clonal_population.get(j));
 
-                    if(Whole_Affinity(AbBase,Training_Ag,Training_AgScale)<correctness)
+                    if(Whole_Affinity(AbBase,Training_Ag)<correctness)
                              AbBase[k]=new Antibody(ab));
                 }
             }
@@ -633,16 +628,16 @@ public class AINet {
         log_debug(msg);
         for(i=0;i<size;i++){
             for(j=i+1;j<size;j++){
-                if(clonal_population.get(i)!= null && clonal_population.get(j)!= null)
-                if(getAffinity(clonal_population.get(i), clonal_population.get(j)) < supression_threshold)
-                {
-                    break;
+                if(clonal_population.get(i)!= null && 
+                        clonal_population.get(j)!= null){
+                    if(clonal_population.get(i).getAffinity(
+                            clonal_population.get(j)) < supression_threshold){
+                        continue outerloop;
+                    }
                 }
-            }//inner for loop
-            if(j == size)
-                final_clonal_population.add(clonal_population.get(i));
-        }//outer for loop
-
+            }
+            final_clonal_population.add(clonal_population.get(i));
+        }
     }
 
 
@@ -714,10 +709,9 @@ public class AINet {
             for(int i=0;i<Training_AgScale;i++) {
                 if(final_Ab_Pool.get(j)!=null&&Training_Ag[i]!=null){
                     if(i==0||( final_Ab_Pool.get(j).Affinity<
-                            getAffinity(Training_Ag[i],final_Ab_Pool.get(j)))){
+                            Training_Ag[i].getAffinity(final_Ab_Pool.get(j)))){
                         final_Ab_Pool.get(j).Affinity = 
-                            getAffinity(Training_Ag[i],
-                                final_Ab_Pool.get(j));
+                            Training_Ag[i].getAffinity(final_Ab_Pool.get(j));
                         final_Ab_Pool.get(j).classification=
                             Training_Ag[i].classification;
                         final_Ab_Pool.get(j).Ag=Training_Ag[i];
@@ -824,11 +818,11 @@ public class AINet {
             for(int i=0;i<Training_AgScale;i++)
              {
                 if(Initial_Ab[j]!=null&&Training_Ag[i]!=null)
-                if(i==0||(Initial_Ab[j].Affinity<getAffinity(Training_Ag[i],Initial_Ab[j])))
+                if(i==0||(Initial_Ab[j].Affinity<Training_Ag[i].getAffinity(Initial_Ab[j])))
                 {
                     if(Initial_Ab[j]!=null&&Training_Ag[i]!=null)
                     {
-                    Initial_Ab[j].Affinity = getAffinity(Training_Ag[i],Initial_Ab[j]);
+                    Initial_Ab[j].Affinity = Training_Ag[i].getAffinity(Initial_Ab[j]);
                     Initial_Ab[j].classification=Training_Ag[i].classification;
                     Initial_Ab[j].Ag=Training_Ag[i];
                     }
@@ -872,7 +866,7 @@ public class AINet {
         while(true){
             correctness_current_iteration = 
                 Whole_Affinity(AbBase,Training_Ag,Training_AgScale);
-            log_debug("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
+            System.out.println("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
             if(correctness_current_iteration > 0.99 || m >=20 || 
                     iter_count > MaxIter){
                 msg=String.format("Breaking while loop after %d times.", 
@@ -936,20 +930,20 @@ public class AINet {
 
               }//end of else
 
-            /*     System.out.println(Whole_Affinity(AbBase,Training_Ag,Training_AgScale));
+            /*     System.out.println(Whole_Affinity(AbBase,Training_Ag));
                                 System.out.println(iter_count);
                                 int n=0;
                                 for(n=0;n<m;n++)
                                 {
-                                    if(y[n]==Whole_Affinity(AbBase,Training_Ag,Training_AgScale))
+                                    if(y[n]==Whole_Affinity(AbBase,Training_Ag))
                                         break;
                                 }
                                 if(n<m||m==0)
-                                { y[m]=Whole_Affinity(AbBase,Training_Ag,Training_AgScale);
+                                { y[m]=Whole_Affinity(AbBase,Training_Ag);
                                 m++;}
                                 else if(n==m)
                                 {
-                                    y[0]=Whole_Affinity(AbBase,Training_Ag,Training_AgScale);
+                                    y[0]=Whole_Affinity(AbBase,Training_Ag);
                                     m=0;
                                 } */
 
@@ -961,7 +955,7 @@ public class AINet {
          for(int i=0;i<BaseScale;i++)
             System.out.println(AbBase[i]);
             
-           //  System.out.println("Whole Affinity = "+Whole_Affinity(AbBase,Whole_Ag,AgScale));
+           //  System.out.println("Whole Affinity = "+Whole_Affinity(AbBase,Whole_Ag));
            //  System.out.println("Total number of iterations = "+iter_count);
      //}//end of runainet
 
@@ -971,7 +965,7 @@ public class AINet {
             ab=new Antibody(AbBase[1]);
             for(int j=1;j<BaseScale;j++)
             {
-                if(getAffinity(Whole_Ag[i],AbBase[j])>getAffinity(Whole_Ag[i],ab))
+                if(Whole_Ag[i].getAffinity(AbBase[j])>Whole_Ag[i].getAffinity(ab))
                 {
                     Whole_Ag[i].classification=AbBase[j].classification;
                     ab=new Antibody(AbBase[j]);
