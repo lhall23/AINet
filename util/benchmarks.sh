@@ -9,9 +9,18 @@ GIT_HASH="$(git log -n1 --format=%H HEAD)"
 GIT_DATE="$(git log -n1 --format=%aD HEAD)"
 
 OUTPUT="$(mktemp)"
-SCALE=500
-ITERATIONS=500
+SCALE=100
+ITERATIONS=100
 TRIALS=5
+
+# If there are arguments supplied on the commandline, they are tests
+TEST_LIST=$@;
+[ -z "$TEST_LIST" ] && {
+    for TEST in benchmarks/*; do
+        [ -d "$TEST" ] &&
+            TEST_LIST+=" $TEST";
+    done
+} 
 
 #Check for uncommitted changes
 [ -z "$(git status -s)" ] || {
@@ -44,7 +53,7 @@ SOURCE_ID="$(
 echo -en "${CURRENT}\nScale: ${SCALE}\tIterations: ${ITERATIONS}\n" | 
     tee -a "${BENCH_DIR}/results.txt"
 
-for TEST in "$BENCH_DIR"/*; do
+for TEST in $TEST_LIST; do
     [ -d "$TEST" ] ||
         continue
     DIMENSIONS="$( sed -n '1s/[^\t ,]*[\t ,]\+/@/gp' "${TEST}/classified.txt" | 
