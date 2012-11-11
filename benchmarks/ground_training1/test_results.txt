@@ -11,3 +11,126 @@ Results: 23137/23846 (.97%)
 Results: 23118/23846 (.96%)
 Results: 23397/23846 (.98%)
 Results: 23061/23846 (.96%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 16447/23846 (.68%)
+Results: 20728/23846 (.86%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 20886/23846 (.87%)
+Results: 23074/23846 (.96%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 23276/23846 (.97%)
+Results: 22101/23846 (.92%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 16935/23846 (.71%)
+Results: 7873/23846 (.33%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 3/23846 (0%)
+Results: 20874/23846 (.87%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 20483/23846 (.85%)
+Results: 16108/23846 (.67%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 23644/23846 (.99%)
+Results: 22031/23846 (.92%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 22279/23846 (.93%)
+Results: 21192/23846 (.88%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 22443/23846 (.94%)
+Results: 21610/23846 (.90%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 18632/23846 (.78%)
+Results: 21468/23846 (.90%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 21942/23846 (.92%)
+Results: 22696/23846 (.95%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 23359/23846 (.97%)
+Results: 22849/23846 (.95%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5Results: 19384/23846 (.81%)
+Results: 20795/23846 (.87%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5
+Results: 11648/23846 (.48%)
+Results: 12880/23846 (.54%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5
+Results: 22788/23846 (.95%)
+Results: 21891/23846 (.91%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5
+Results: 21551/23846 (.90%)
+Results: 19899/23846 (.83%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5
+Results: 16993/23846 (.71%)
+Results: 16221/23846 (.68%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 10	Iterations: 5
+Results: 21445/23846 (.89%)
+Results: 13897/23846 (.58%)
+commit 035d45d5f69815b8cb57d789c33004d256f2c5c7
+Author: Lee Hall <lhall@newfields.com>
+
+    Created a benchmarking harness
+Scale: 500	Iterations: 500
+Results: 19446/23846 (.81%)
+Results: 23386/23846 (.98%)
+Results: 22631/23846 (.94%)
+Results: 23035/23846 (.96%)
+Results: 20858/23846 (.87%)
