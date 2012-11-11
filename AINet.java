@@ -25,6 +25,7 @@ public class AINet {
     private static final int DEFAULT_MAX_BREEDING_ITER = 500;
     private static final int DEFAULT_DIMENSIONS = 3;
 
+    //*FIXME*
     //These should not be statics, but a property of each instantiation, but
     //we'll deal with that later.
     
@@ -276,8 +277,6 @@ public class AINet {
         public double value[]=new double[Dimensions];
         public int classification;
 
-        //Characters on which to create the 
-
         public Cell(double[] values, int classification){
             for(int i=0;i<Dimensions;i++){
                 this.value[i]=values[i];
@@ -312,6 +311,7 @@ public class AINet {
             retString.append(String.format("%d",this.classification));
             return retString.toString();
         }
+
         //Promote an array of ints to an array of doubles
         private static double[] promote(int[] input){
             double[] output = new double[input.length];
@@ -394,6 +394,16 @@ public class AINet {
             super();
         }
 
+        public Antibody(Antibody clone){
+            for(int i=0;i<Dimensions;i++){
+                this.value[i]=clone.value[i];
+            }
+            this.classification=clone.classification;
+            this.Affinity = clone.Affinity;
+            this.Ag = clone.Ag;
+        }
+
+
         public Antibody(double[] values){
             super(values);
         }
@@ -454,23 +464,6 @@ public class AINet {
         return (1/EuclidianDistance);
     }
 
-
-    
-//Manual assignment of one Antibody to another Antibody
-// *FIXME* This should be a clone() method of the Antibody class
-     public static void equate(Antibody Ab1,Antibody Ab2)
-    {
-         if(Ab1!=null&&Ab2!=null)
-         {
-        for(int i=0;i<Dimensions;i++)
-          Ab1.value[i]=Ab2.value[i];
-
-        Ab1.classification=Ab2.classification;
-        Ab1.Affinity = Ab2.Affinity;
-        Ab1.Ag = Ab2.Ag;
-        }
-    }
-
 //Used to find the overall correctness
     public static double Whole_Affinity(Antibody []Ab,Antigen []Ag,int AgScale)
     {
@@ -483,7 +476,7 @@ public class AINet {
             //*FIXME* You don't need a deep copy here
             for(int j=0;j<BaseScale;j++)
                 if(j==0||(getAffinity(Ag[i],ab)<getAffinity(Ag[i],Ab[j])))
-                    equate(ab,Ab[j]);
+                    ab=new Antibody(Ab[j]);
             if(Ag[i]!=null&&ab!=null)
             if(Ag[i].classification==ab.classification)
                 correct++;
@@ -514,7 +507,7 @@ public class AINet {
                 else
                 ab.value[k]=rand.nextDouble()*MaxValue;
                 }*/
-                equate(ab,AbBase[i]);
+                ab=new Antibody(AbBase[i]);
                 clonal_population.add(ab);
                 }
             }
@@ -592,11 +585,11 @@ public class AINet {
                     j--;
                 }
                 else if(clonal_population.get(j).Affinity > AbBase[k].Affinity){
-                    equate(ab,AbBase[k]);
-                    equate(AbBase[k],clonal_population.get(j));
+                    ab=new Antibody(AbBase[k]);
+                    AbBase[k]=new Antibody(clonal_population.get(j));
 
                     if(Whole_Affinity(AbBase,Training_Ag,Training_AgScale)<correctness)
-                             equate(AbBase[k],ab);
+                             AbBase[k]=new Antibody(ab));
                 }
             }
         }*/
@@ -817,7 +810,7 @@ public class AINet {
               {
 
                  AbBase[i]=new Antibody();
-                      equate(AbBase[i],Initial_Ab[i]);
+                      AbBase[i]=new Antibody(Initial_Ab[i]);
 
               }
                   // *FIXME* 
@@ -827,7 +820,7 @@ public class AINet {
                       for(int i=BaseScale;i<Initial_AbScale;i++)
                       if((AbBase[j].Affinity<Initial_Ab[i].Affinity))
                       {
-                          equate(AbBase[j],Initial_Ab[i]);
+                          AbBase[j]=new Antibody(Initial_Ab[i]);
                           highest = i;
                       }
                   Initial_Ab[highest].Affinity=0;
@@ -871,8 +864,8 @@ public class AINet {
 
                 int c=0;
                 for(int i=0;i<BaseScale;i++){
-                    AbBase[i]=new Antibody();
-                    equate(AbBase[i],final_Reconstructed_Antibody_Pool.get(i));
+                    AbBase[i]=
+                        new Antibody(final_Reconstructed_Antibody_Pool.get(i));
                 }
                
                 // *FIXME*  
@@ -884,7 +877,8 @@ public class AINet {
                         if((AbBase[j].Affinity<
                             final_Reconstructed_Antibody_Pool.get(i).Affinity))
                         {
-                            equate(AbBase[j],
+
+                            AbBase[j]=new Antibody(
                                 final_Reconstructed_Antibody_Pool.get(i));
                             c=i;
                         }
@@ -926,13 +920,13 @@ public class AINet {
              Antibody ab = new Antibody();
          for(int i=0;i<AgScale;i++)
         {
-            equate(ab,AbBase[1]);
+            ab=new Antibody(AbBase[1]);
             for(int j=1;j<BaseScale;j++)
             {
                 if(getAffinity(Whole_Ag[i],AbBase[j])>getAffinity(Whole_Ag[i],ab))
                 {
                     Whole_Ag[i].classification=AbBase[j].classification;
-                    equate(ab,AbBase[j]);
+                    ab=new Antibody(AbBase[j]);
                 }
             }
         }
