@@ -626,11 +626,13 @@ public class AINet {
                         clonal_population.get(j)!= null){
                     if(clonal_population.get(i).getAffinity(
                             clonal_population.get(j)) < supression_threshold){
-                        continue outerloop;
+                        break;
                     }
                 }
             }
-            final_clonal_population.add(clonal_population.get(i));
+            if (j==size){
+                final_clonal_population.add(clonal_population.get(i));
+            }
         }
     }
 
@@ -669,17 +671,23 @@ public class AINet {
 
         //*FIXME* Perhaps we can look at the lists minimum affinity?
         //          and not be terribly gross?
-            for(i=0;i<size;i++){
-                for(j=i+1;j<size;j++){
-                    if(Reconstructed_Antibody_Pool.get(i)!= null && Reconstructed_Antibody_Pool.get(j)!= null)
-                    if(getAffinity(Reconstructed_Antibody_Pool.get(i), Reconstructed_Antibody_Pool.get(j)) < supression_threshold)
-                    {
+        outerloop:
+        for(i=0;i<size;i++){
+            for(j=i+1;j<size;j++){
+                if(Reconstructed_Antibody_Pool.get(i)!= null && 
+                        Reconstructed_Antibody_Pool.get(j)!= null){
+                    if(Reconstructed_Antibody_Pool.get(i).getAffinity(
+                            Reconstructed_Antibody_Pool.get(j)) < 
+                            supression_threshold) {
                         break;
                     }
-                }//inner for loop
-                if(j == size)
-                    final_Reconstructed_Antibody_Pool.add(Reconstructed_Antibody_Pool.get(i));
-            }//outer for loop
+                }
+            }
+            if (j==size){
+                final_Reconstructed_Antibody_Pool.add(
+                    Reconstructed_Antibody_Pool.get(i));
+            }
+        }
         msg=String.format("Ab pool size end: %d", Reconstructed_Antibody_Pool.size());
         log_debug(msg);
     }
@@ -775,13 +783,16 @@ public class AINet {
 
         Antibody Initial_Ab[]=new Antibody[Initial_AbScale];
         Antibody AbBase[]=new Antibody[BaseScale];
+
         //private  Antigen Whole_Ag[]=new Antigen[AgScale];
         ArrayList<Antibody> Reconstructed_Antibody_Pool = 
             new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
         ArrayList<Antibody> final_Reconstructed_Antibody_Pool = 
             new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
-        ArrayList<Antibody> clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
-        ArrayList<Antibody> final_clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
+        ArrayList<Antibody> clonal_population = 
+            new ArrayList<Antibody>(Clonal_BaseScale);
+        ArrayList<Antibody> final_clonal_population = 
+            new ArrayList<Antibody>(Clonal_BaseScale);
         //   initialize(Initial_Ab,AbBase ,Whole_Ag,Training_Ag);
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -827,8 +838,7 @@ public class AINet {
 //Take the top 'AbScale' number of antibodies with highest affinity
 
          int highest = 0;
-              for(int i=0;i<BaseScale;i++)
-              {
+        for(int i=0;i<BaseScale;i++) {
 
                  AbBase[i]=new Antibody();
                       AbBase[i]=new Antibody(Initial_Ab[i]);
@@ -870,6 +880,7 @@ public class AINet {
              } else {
                 iter_count++;
                 Clonal_Expansion(AbBase,clonal_population,Training_Ag);
+<<<<<<< HEAD
                 log_debug("Size after clonal_expansion " +
                     clonal_population.size());
                 Affinity_Maturation(clonal_population,AbBase,Training_Ag,
@@ -894,6 +905,32 @@ public class AINet {
                     Training_Ag);
                 log_debug("Size after Diversity " +
                     final_Reconstructed_Antibody_Pool.size());
+=======
+                System.out.println("After expansion there are " + 
+                    clonal_population.size() + " clones.");
+                Affinity_Maturation(clonal_population,AbBase,Training_Ag,
+                    correctness_current_iteration);
+                System.out.println("After maturation there are " + 
+                    clonal_population.size() + " clones.");
+                Metadynamics(clonal_population);
+                System.out.println("After metadynamics there are " + 
+                    clonal_population.size() + " clones.");
+                Clonal_Supression(clonal_population,final_clonal_population);
+                System.out.println("After Clonal supression there are " + 
+                    final_clonal_population.size() + " clones.");
+                Network_Reconstruction(Reconstructed_Antibody_Pool, 
+                    final_clonal_population, AbBase);
+                System.out.println("After reconstruction there are " + 
+                    Reconstructed_Antibody_Pool.size() + " clones.");
+                Network_Interaction_Supression(Reconstructed_Antibody_Pool,
+                    final_Reconstructed_Antibody_Pool);
+                System.out.println("After Network supression there are " + 
+                    final_Reconstructed_Antibody_Pool.size() + " clones.");
+                Introduce_Diversity(final_Reconstructed_Antibody_Pool,
+                    Training_Ag);
+                System.out.println("After diversity there are " + 
+                    final_Reconstructed_Antibody_Pool.size() + " clones.");
+>>>>>>> 0783ef3... Stash this while we track down the bug
 
                 //Find the top 'baseScale' antibodies from the final
                 //reconstructed antibody pool and repeate the loop
