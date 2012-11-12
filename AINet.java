@@ -880,7 +880,6 @@ public class AINet {
              } else {
                 iter_count++;
                 Clonal_Expansion(AbBase,clonal_population,Training_Ag);
-<<<<<<< HEAD
                 log_debug("Size after clonal_expansion " +
                     clonal_population.size());
                 Affinity_Maturation(clonal_population,AbBase,Training_Ag,
@@ -905,33 +904,6 @@ public class AINet {
                     Training_Ag);
                 log_debug("Size after Diversity " +
                     final_Reconstructed_Antibody_Pool.size());
-=======
-                System.out.println("After expansion there are " + 
-                    clonal_population.size() + " clones.");
-                Affinity_Maturation(clonal_population,AbBase,Training_Ag,
-                    correctness_current_iteration);
-                System.out.println("After maturation there are " + 
-                    clonal_population.size() + " clones.");
-                Metadynamics(clonal_population);
-                System.out.println("After metadynamics there are " + 
-                    clonal_population.size() + " clones.");
-                Clonal_Supression(clonal_population,final_clonal_population);
-                System.out.println("After Clonal supression there are " + 
-                    final_clonal_population.size() + " clones.");
-                Network_Reconstruction(Reconstructed_Antibody_Pool, 
-                    final_clonal_population, AbBase);
-                System.out.println("After reconstruction there are " + 
-                    Reconstructed_Antibody_Pool.size() + " clones.");
-                Network_Interaction_Supression(Reconstructed_Antibody_Pool,
-                    final_Reconstructed_Antibody_Pool);
-                System.out.println("After Network supression there are " + 
-                    final_Reconstructed_Antibody_Pool.size() + " clones.");
-                Introduce_Diversity(final_Reconstructed_Antibody_Pool,
-                    Training_Ag);
-                System.out.println("After diversity there are " + 
-                    final_Reconstructed_Antibody_Pool.size() + " clones.");
->>>>>>> 0783ef3... Stash this while we track down the bug
-
                 //Find the top 'baseScale' antibodies from the final
                 //reconstructed antibody pool and repeate the loop
 
