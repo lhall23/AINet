@@ -550,22 +550,17 @@ public class AINet {
         }
 
         //After affinity maturation recalculate the affinity of clonal population and the class it belongs to
+        Antigen ag;
+        Antibody ab;
         for(int j=0;j<clonal_population.size();j++){
             for(int i=0;i<Training_AgScale;i++){
-                if(clonal_population.get(j)!=null&&Training_Ag[i]!=null){
-                    if(i==0|| (
-                            clonal_population.get(j).Affinity < 
-                                Training_Ag[i].getAffinity(
-                                    clonal_population.get(j)))) {
-                        if(clonal_population.get(j)!=null&&
-                                Training_Ag[i]!=null){
-                            clonal_population.get(j).Affinity = 
-                                Training_Ag[i].getAffinity(
-                                    clonal_population.get(j));
-                            clonal_population.get(j).classification=
-                                Training_Ag[i].classification;
-                            clonal_population.get(j).Ag=Training_Ag[i];
-                        }
+                ab=clonal_population.get(j);
+                ag=Training_Ag[i];
+                if(ab!=null&&ag!=null){
+                    if(i==0|| (ab.Affinity < ag.getAffinity(ab))) {
+                        ab.Affinity = ag.getAffinity(ab);
+                        ab.classification=ag.classification;
+                        ab.Ag=ag;
                     }
                 }
             }
