@@ -204,11 +204,7 @@ public class AINet {
 	    AINet ais = new AINet(inputData,corpus_file);  	
         log_debug("Classification results: ");
         int m;
-        if (output_file == null){  
-            for (m=0; m < ais.Whole_Ag.length; m++){
-                log_debug(ais.Whole_Ag[m].toString());
-            }
-        } else {
+        if (output_file != null){  
             try {
                 BufferedWriter writer=
                     new BufferedWriter(new FileWriter(output_file));
@@ -225,6 +221,9 @@ public class AINet {
                 System.exit(1);
             }
 
+        }
+        for (m=0; m < ais.Whole_Ag.length; m++){
+            System.out.println(ais.Whole_Ag[m]);
         }
 	}
 
