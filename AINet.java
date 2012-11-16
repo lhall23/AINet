@@ -24,6 +24,7 @@ public class AINet {
     private static final int DEFAULT_POPULATION_SIZE=500;
     private static final int DEFAULT_MAX_BREEDING_ITER = 500;
     private static final int DEFAULT_DIMENSIONS = 3;
+    private static boolean DEBUG=false;
 
     //*FIXME*
     //These should not be statics, but a property of each instantiation, but
@@ -53,8 +54,7 @@ public class AINet {
             "\t-s SCALE \tScale of the clonal population to generate\n" +
             "\t-i ITERATIONS \tNumber of Iterations to train Antibodies\n" +
             "\t-d DIMENSIONS \tNumber of dimensions in data set\n" +
-            "\t-p          \tparseable output\n" +
-            "\t-T          \ttesting output\n";
+            "\t-D          \tDEBUG\n";
 
                 // Parse arguments... where's my beloved optarg?!
         int i=0;
@@ -67,11 +67,9 @@ public class AINet {
                 case 'h':
                     System.out.print(help);
                     System.exit(1);
-                case 'p':
-                    //Currently a null op
-                    continue;
-                case 'T':
-                    //Currently a null op
+                case 'D':
+                    System.out.println("Debugging enabled.");
+                    AINet.DEBUG=true;
                     continue;
             }
 
@@ -88,7 +86,7 @@ public class AINet {
             switch(opt){
                 case 't':
                     msg=String.format("Loading training file \"%s\".", optarg_s);
-                    System.out.println(msg);
+                    AINet.log_debug(msg);
                     corpus_file=new File(optarg_s); 
                     if (!corpus_file.canRead()){
                         System.out.printf(
@@ -100,37 +98,38 @@ public class AINet {
                 case 'f':
                     msg=String.format(
                         "Loading data file \"%s\".", optarg_s);
-                    System.out.println(msg);
+                    log_debug(msg);
                     input_file=new File(optarg_s); 
                     if (!input_file.canRead()){
-                        System.out.printf(
+                        msg=String.format(
                             "Can't read input file %s. Exiting.", 
                             input_file.getName());
+                        System.out.println(msg);
                         System.exit(1);
                     }
                     break;
                 case 'o':
                     msg=String.format(
                         "Creating output file \"%s\".", optarg_s);
-                    System.out.println(msg);
+                    log_debug(msg);
                     output_file=new File(optarg_s); 
                     break;
                 case 's':
                     msg=String.format(
                         "Setting scale to \"%s\".", optarg_s);
-                    System.out.println(msg);
+                    log_debug(msg);
                     BaseScale=Integer.valueOf(optarg_s); 
                     break;
                 case 'i':
                     msg=String.format(
                         "Setting maximum iterations to \"%s\".", optarg_s);
-                    System.out.println(msg);
+                    log_debug(msg);
                     MaxIter=Integer.valueOf(optarg_s); 
                     break;
                 case 'd':
                     msg=String.format(
                         "Setting dimensions to \"%s\".", optarg_s);
-                    System.out.println(msg);
+                    log_debug(msg);
                     Dimensions=Integer.valueOf(optarg_s); 
                     break;
                 default:
@@ -149,13 +148,13 @@ public class AINet {
         if (corpus_file == null) {
             msg=String.format("Loading default training file \"%s\".", 
                 DEFAULT_TRAINING_FILE);
-            System.out.println(msg);
+            log_debug(msg);
             corpus_file=new File(DEFAULT_TRAINING_FILE);
         } 
         if (input_file == null) {
             msg=String.format("Loading default data file \"%s\".", 
                 DEFAULT_DATA_FILE);
-            System.out.println(msg);
+            log_debug(msg);
             input_file=new File(DEFAULT_DATA_FILE);
         } 
 
@@ -174,7 +173,7 @@ public class AINet {
             reader=new BufferedReader(new FileReader(input_file));
             while((line_in=reader.readLine()) != null){
                 if (line_in.equals("")){
-                    System.out.println("Blank line in input file skipped");
+                    log_debug("Blank line in input file skipped");
                     continue;
                 }
                 //Create an unclassified Antigen from the input row
@@ -203,11 +202,11 @@ public class AINet {
         Antigen[] inputData=tempData.toArray(new Antigen[tempData.size()]);
         
 	    AINet ais = new AINet(inputData,corpus_file);  	
-        System.out.println("Classification results: ");
+        log_debug("Classification results: ");
         int m;
         if (output_file == null){  
             for (m=0; m < ais.Whole_Ag.length; m++){
-                System.out.println(ais.Whole_Ag[m]);
+                log_debug(ais.Whole_Ag[m].toString());
             }
         } else {
             try {
@@ -228,6 +227,12 @@ public class AINet {
 
         }
 	}
+
+    private static void log_debug(String msg){
+        if (AINet.DEBUG){
+            System.out.println(msg);
+        }
+    }
 
     //bird training = 213
     //scene training = 3400
@@ -613,11 +618,19 @@ public class AINet {
         */
     }
 
-
-    //Remove those clones whose affinity with each other is less than the supression threshold
-    public static void Clonal_Supression(ArrayList<Antibody> clonal_population,ArrayList<Antibody> final_clonal_population){
+    //*FIXME* Why does this look identical to Network_Interaction_Supression()?
+    //Remove those clones whose affinity with each other is less than the 
+    //supression threshold
+    public static void Clonal_Supression(
+            ArrayList<Antibody> clonal_population,
+            ArrayList<Antibody> final_clonal_population){
+        String msg;
         int i = 0,j = 0;
         int size = clonal_population.size();
+
+        msg=String.format("Clonal_Pop = %d Final_Pop = %d.", 
+            size, final_clonal_population.size());
+        log_debug(msg);
         for(i=0;i<size;i++){
             for(j=i+1;j<size;j++){
                 if(clonal_population.get(i)!= null && clonal_population.get(j)!= null)
@@ -635,6 +648,11 @@ public class AINet {
 
 //concatenate the antibody base with the final clonal population
     public static void Network_Reconstruction(ArrayList<Antibody> Reconstructed_Antibody_Pool,ArrayList<Antibody> final_clonal_population,Antibody[] AbBase){
+        String msg;
+
+        msg=String.format("Ab pool size start: %d.", 
+            Reconstructed_Antibody_Pool.size());
+        log_debug(msg);
 
        for(int i = 0;i<BaseScale;i++)
            Reconstructed_Antibody_Pool.add(AbBase[i]);
@@ -643,12 +661,25 @@ public class AINet {
            Reconstructed_Antibody_Pool.add(final_clonal_population.get(j));
 
         }
+        msg=String.format("Ab pool size end: %d.", 
+            Reconstructed_Antibody_Pool.size());
+        log_debug(msg);
     }
 
- //network supression
-    public static void Network_Interaction_Supression(ArrayList<Antibody> Reconstructed_Antibody_Pool,ArrayList<Antibody> final_Reconstructed_Antibody_Pool){
-      int i = 0,j = 0;
-            int size = Reconstructed_Antibody_Pool.size();
+    //network supression
+    public static void Network_Interaction_Supression(
+            ArrayList<Antibody> Reconstructed_Antibody_Pool,
+            ArrayList<Antibody> final_Reconstructed_Antibody_Pool){
+        String msg;
+
+        msg=String.format("Ab pool size start: %d.", 
+            Reconstructed_Antibody_Pool.size());
+        log_debug(msg);
+        int i = 0,j = 0;
+        int size = Reconstructed_Antibody_Pool.size();
+
+        //*FIXME* Perhaps we can look at the lists minimum affinity?
+        //          and not be terribly gross?
             for(i=0;i<size;i++){
                 for(j=i+1;j<size;j++){
                     if(Reconstructed_Antibody_Pool.get(i)!= null && Reconstructed_Antibody_Pool.get(j)!= null)
@@ -660,7 +691,8 @@ public class AINet {
                 if(j == size)
                     final_Reconstructed_Antibody_Pool.add(Reconstructed_Antibody_Pool.get(i));
             }//outer for loop
-
+        msg=String.format("Ab pool size end: %d", Reconstructed_Antibody_Pool.size());
+        log_debug(msg);
     }
 
 
@@ -710,7 +742,7 @@ public class AINet {
                 new BufferedReader(new FileReader(corpus_file));
             while((line_in=reader.readLine()) != null){
                 if (line_in.equals("")){
-                    System.out.println("Blank line in input file skipped");
+                    log_debug("Blank line in input file skipped");
                     continue;
                 }
                 temp_training_ag.add(Antigen.valueOf(line_in));
@@ -742,7 +774,8 @@ public class AINet {
 
         System.out.println("Dumping training set:");
         for(int i=0; i < Training_AgScale; i++){
-            System.out.printf("[%d]: %s\n", i, Training_Ag[i]);
+            msg=String.format("[%d]: %s", i, Training_Ag[i]);
+            log_debug(msg);
         }
         return Training_Ag;
     }
@@ -839,25 +872,40 @@ public class AINet {
         while(true){
             correctness_current_iteration = 
                 Whole_Affinity(AbBase,Training_Ag,Training_AgScale);
-            System.out.println("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
+            log_debug("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
             if(correctness_current_iteration > 0.99 || m >=20 || 
                     iter_count > MaxIter){
-                System.out.printf("Breaking while loop after %d times.\n", 
+                msg=String.format("Breaking while loop after %d times.", 
                     iter_count);
+                log_debug(msg);
                 break;
              } else {
                 iter_count++;
                 Clonal_Expansion(AbBase,clonal_population,Training_Ag);
+                log_debug("Size after clonal_expansion " +
+                    clonal_population.size());
                 Affinity_Maturation(clonal_population,AbBase,Training_Ag,
                     correctness_current_iteration);
+                log_debug("Size after Affinity maturation " +
+                    clonal_population.size());
                 Metadynamics(clonal_population);
+                log_debug("Size after metadynamics " +
+                    clonal_population.size());
                 Clonal_Supression(clonal_population,final_clonal_population);
+                log_debug("Size after clonal supression " +
+                    final_clonal_population.size());
                 Network_Reconstruction(Reconstructed_Antibody_Pool, 
                     final_clonal_population, AbBase);
+                log_debug("Size after Network reconstruction " +
+                    Reconstructed_Antibody_Pool.size());
                 Network_Interaction_Supression(Reconstructed_Antibody_Pool,
                     final_Reconstructed_Antibody_Pool);
+                log_debug("Size after Network Supression " +
+                    Reconstructed_Antibody_Pool.size());
                 Introduce_Diversity(final_Reconstructed_Antibody_Pool,
                     Training_Ag);
+                log_debug("Size after Diversity " +
+                    final_Reconstructed_Antibody_Pool.size());
 
                 //Find the top 'baseScale' antibodies from the final
                 //reconstructed antibody pool and repeate the loop
@@ -961,7 +1009,8 @@ public class AINet {
         int row_len=TRGB[0][0].length;
         int col_len=TRGB[0].length;
         int[][] inputData = new int[row_len*col_len][Dimensions]; 
-        System.out.printf("Rows: %d, Cols: %s\n", row_len, col_len);
+        String msg=String.format("Rows: %d, Cols: %s", row_len, col_len);
+        log_debug(msg);
         //There are 4 bands, but we don't care about the transparency
         int bands=3;
 
@@ -984,6 +1033,7 @@ public class AINet {
      * at.
      */
     public AINet(int[][] inputData, File corpus_file) throws Exception{
+        String msg;
         //*KILLME* This makes sure that TRGB is initialized for getResults()
         //when this is the only constructor called. Since getResults should be
         //returning a flattened array anyway, the original dimensions are
@@ -1000,14 +1050,16 @@ public class AINet {
         //global
         AgScale=Whole_Ag.length;
         Training_AgScale=Training_Ag.length;
-        System.out.println("Antibodies:");
+        log_debug("Antibodies:");
         for(int n=0; n < Training_Ag.length; n++){
-            System.out.println(Training_Ag[n]);
+            msg=String.format("%s", Training_Ag[n]);
+            log_debug(msg);
         }
         setupAINet(Whole_Ag,Training_Ag);
     }
 
     public AINet(Antigen[] inputData, File corpus_file){
+        String msg;
         //*KILLME* This makes sure that TRGB is initialized for getResults()
         //when this is the only constructor called. Since getResults should be
         //returning a flattened array anyway, the original dimensions are
@@ -1023,15 +1075,18 @@ public class AINet {
         Training_AgScale=Training_Ag.length;
         System.out.println("Antibodies:");
         for(int n=0; n < Training_Ag.length; n++){
-            System.out.println(Training_Ag[n]);
+            msg=String.format("%s", Training_Ag[n]);
+            log_debug(msg);
         }
         setupAINet(Whole_Ag,Training_Ag);
     }
 
     public int[] getResults(){
-    int i=0;
-        System.out.printf("Generating TRGB array of size %d,%d,%d\n",
+        String msg;
+        int i=0;
+        msg=String.format("Generating TRGB array of size %d,%d,%d\n",
             TRGB.length, TRGB[0].length,TRGB[0][0].length);
+        log_debug(msg);
         for(int row=0;row<TRGB[0][0].length;row++)
         for (int column = 0; column <TRGB[0].length; column++)
         {

@@ -13,6 +13,26 @@ SCALE=100
 ITERATIONS=100
 TRIALS=5
 
+SAVE=true
+
+# Get options 
+while getopts "t" OPT; do
+    case $OPT in
+        t)
+        echo "Test run. Reporting disabled, debugging enabled."
+        SAVE=false;
+        DEBUG="-D";
+        ;;
+        *)
+        echo "Option not recognized"
+        exit 1;
+        ;;
+    esac
+done
+shift $(( $OPTIND - 1 ))
+echo $@
+
+
 # If there are arguments supplied on the commandline, they are tests
 TEST_LIST=$@;
 [ -z "$TEST_LIST" ] && {
@@ -23,7 +43,7 @@ TEST_LIST=$@;
 } 
 
 #Check for uncommitted changes
-[ -z "$(git status -s)" ] || {
+[ "x${SAVE}x" == "xtruex" ] && [ -n "$(git status -s)" ] && {
     echo "Uncommitted changes."
     echo "Are we logging this with the correct revision? [y/N]"
     read prompt
@@ -71,11 +91,11 @@ for TEST in $TEST_LIST; do
         start_time="$(date)"
         java -jar "$JAR_TMP" -t "${TEST}/train.txt" -f "${TEST}/test_data.txt" \
             -o "${OUTPUT}"  -d "${DIMENSIONS}" -s "${SCALE}" \
-            -i "${ITERATIONS}" 
+            -i "${ITERATIONS}" "${DEBUG}" || exit 1
         end_time="$(date)"
         INCORRECT="$( ./util/compare.sh "$OUTPUT" "${TEST}/classified.txt" | 
             wc -l )"
-        echo "INSERT INTO test(source_id,benchmark_id,runtime,scale,
+        [ "$SAVE"=="true" ] && echo "INSERT INTO test(source_id,benchmark_id,runtime,scale,
                 iterations,wrong) VALUES
             ($SOURCE_ID,$BENCHMARK_ID,
                 '$end_time'::timestamp - '$start_time'::timestamp,$SCALE,
