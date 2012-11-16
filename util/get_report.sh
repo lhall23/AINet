@@ -7,7 +7,8 @@ SELECT name,scale,iterations,
         DATE_TRUNC('seconds', AVG(runtime)) AS avg_runtime, 
         DATE_TRUNC('seconds', STDDEV_POP(runtime)) AS std_dev, 
         AVG(PERCENT(wrong,data_size)) AS percent_correct, 
-        STDDEV_POP(PERCENT(wrong,data_size)) AS percent_stddev  
+        STDDEV_POP(PERCENT(wrong,data_size)) AS percent_stddev,
+        COUNT(*) AS trials 
     FROM test 
     JOIN benchmark USING (benchmark_id) 
     GROUP BY iterations,scale,name

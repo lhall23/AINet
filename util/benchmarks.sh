@@ -34,13 +34,25 @@ echo $@
 
 
 # If there are arguments supplied on the commandline, they are tests
-TEST_LIST=$@;
-[ -z "$TEST_LIST" ] && {
+if [ -z "$@" ]; then 
     for TEST in benchmarks/*; do
         [ -d "$TEST" ] &&
             TEST_LIST+=" $TEST";
     done
-} 
+else 
+    for TEST in $@; do 
+        TEST="$BENCH_DIR/$TEST";
+        if [ -d "$TEST" ]; then
+            TEST_LIST+=" $TEST" 
+        else
+            echo "Cannot find directory for $TEST."
+        fi
+    done
+fi
+[ -z "$TEST_LIST" ] &&
+    echo "No tests selected." &&
+    exit 1 
+echo "Selected tests: $TEST_LIST"
 
 #Check for uncommitted changes
 [ "x${SAVE}x" == "xtruex" ] && [ -n "$(git status -s)" ] && {

@@ -31,7 +31,7 @@ CREATE TABLE benchmark (
 INSERT INTO benchmark(name,dimensions,training_size,data_size) VALUES 
 	('ground_training1', 3, 2384, 23485), 
 	('ground_training2', 3, 3649, 36490),
-	('iris', 4, 13, 149),
+	('iris', 4, 13, 150),
 	('wine', 16, 17, 178);
 
 DROP TABLE IF EXISTS test CASCADE;
