@@ -9,8 +9,8 @@ GIT_HASH="$(git log -n1 --format=%H HEAD)"
 GIT_DATE="$(git log -n1 --format=%aD HEAD)"
 
 OUTPUT="$(mktemp)"
-SCALE=500
-ITERATIONS=500
+SCALE=100
+ITERATIONS=100
 TRIALS=5
 
 SAVE=true
@@ -55,11 +55,7 @@ fi
 echo "Selected tests: $TEST_LIST"
 
 #Check for uncommitted changes
-<<<<<<< HEAD
 [ "x${SAVE}x" == "xtruex" ] && [ -n "$(git status -s)" ] && {
-=======
-[ -n "$(git status -s)" ] && {
->>>>>>> efe5917... Added some options
     echo "Uncommitted changes."
     echo "Are we logging this with the correct revision? [y/N]"
     read prompt
@@ -107,19 +103,11 @@ for TEST in $TEST_LIST; do
         start_time="$(date)"
         java -jar "$JAR_TMP" -t "${TEST}/train.txt" -f "${TEST}/test_data.txt" \
             -o "${OUTPUT}"  -d "${DIMENSIONS}" -s "${SCALE}" \
-<<<<<<< HEAD
             -i "${ITERATIONS}" "${DEBUG}" || exit 1
         end_time="$(date)"
         INCORRECT="$( ./util/compare.sh "$OUTPUT" "${TEST}/classified.txt" | 
             wc -l )"
         [ "$SAVE"=="true" ] && echo "INSERT INTO test(source_id,benchmark_id,runtime,scale,
-=======
-            -i "${ITERATIONS}" || echo "Failure" >> test.out
-        end_time="$(date)"
-        INCORRECT="$( ./util/compare.sh "$OUTPUT" "${TEST}/classified.txt" | 
-            wc -l )"
-        [ "$SAVE" ] && echo "INSERT INTO test(source_id,benchmark_id,runtime,scale,
->>>>>>> efe5917... Added some options
                 iterations,wrong) VALUES
             ($SOURCE_ID,$BENCHMARK_ID,
                 '$end_time'::timestamp - '$start_time'::timestamp,$SCALE,

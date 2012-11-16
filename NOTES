@@ -1,0 +1,23 @@
+From a run from 4310d43cd0014f45be5916d7c23fa08bb87a049b
+	after iteration 60 whole affinity is 0.9555921052631579
+	Size after clonal_expansion 733
+	Size after Affinity maturation 733
+	Size after metadynamics 0
+	Size after clonal supression 10
+	Size after Network reconstruction 10
+	Size after Network Supression 30845
+
+It seems unlikely that these functions are doing what they were designed to do.
+
+From a run after  af1ca7de3f78f0c113e537469d5ad3568b4ce4b8  (moving getAffinity
+into the Cell object), even this minimal functionality seems lost.
+	after iteration 0 whole affinity is 0.8171600877192983
+	Size after clonal_expansion 760
+	Size after Affinity maturation 760
+	Size after metadynamics 0
+	Size after clonal supression 0
+	Size after Network reconstruction 0
+	Size after Network Supression 500
+	Size after Diversity 301
+
+

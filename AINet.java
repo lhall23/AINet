@@ -36,6 +36,10 @@ public class AINet {
     private static int MaxIter = DEFAULT_MAX_BREEDING_ITER;
     //Number of Antibodies in each population
     private static int BaseScale = DEFAULT_POPULATION_SIZE;
+    //Control values for the breeding steps
+    private static int diversityCount=BaseScale*3;
+    private static int Clonal_BaseScale=BaseScale*3;
+
 
     // *FIXME* Not a global. This goes away with refactoring
     private static File input_file;
@@ -59,7 +63,8 @@ public class AINet {
                 // Parse arguments... where's my beloved optarg?!
         int i=0;
         char opt=' ';
-        while ((i < args.length) && (args[i].charAt(0) == '-')){
+        while ((i < args.length) && args[i].length() > 0 &&
+                (args[i].charAt(0) == '-')){
             opt = args[i++].charAt(1);
             optarg_s="";
             //Parse arguments that don't take options 
@@ -119,6 +124,8 @@ public class AINet {
                         "Setting scale to \"%s\".", optarg_s);
                     log_debug(msg);
                     BaseScale=Integer.valueOf(optarg_s); 
+                    diversityCount=BaseScale*3;
+                    Clonal_BaseScale=BaseScale*3;
                     break;
                 case 'i':
                     msg=String.format(
@@ -138,8 +145,13 @@ public class AINet {
                     break;
             }
         }
-        if (i != args.length){
-            System.out.println("Unused arguments.");
+        if (i < args.length && args[i].length() > 0){
+            msg="Unused arguments: ";
+            while (i < args.length){
+                msg+=String.format("\"%s\",", args[i++]); 
+            }
+            msg=msg.substring(0,msg.length()-1) + ".";
+            System.out.println(msg);
             System.out.print(help);
             System.exit(1);
         }
@@ -245,8 +257,6 @@ public class AINet {
     private int AgScale;
 
     private static int MaxValue=255;
-    private static final int diversityCount=BaseScale*3;
-    private static final int Clonal_BaseScale=BaseScale*3;
     private static final int Initial_AbScale=1000;
     private static double supression_threshold = 0.09;
     private static double metadynamics_threshold = 0.7;
@@ -550,17 +560,22 @@ public class AINet {
         }
 
         //After affinity maturation recalculate the affinity of clonal population and the class it belongs to
-        Antigen ag;
-        Antibody ab;
         for(int j=0;j<clonal_population.size();j++){
             for(int i=0;i<Training_AgScale;i++){
-                ab=clonal_population.get(j);
-                ag=Training_Ag[i];
-                if(ab!=null&&ag!=null){
-                    if(i==0|| (ab.Affinity < ag.getAffinity(ab))) {
-                        ab.Affinity = ag.getAffinity(ab);
-                        ab.classification=ag.classification;
-                        ab.Ag=ag;
+                if(clonal_population.get(j)!=null&&Training_Ag[i]!=null){
+                    if(i==0|| (
+                            clonal_population.get(j).Affinity < 
+                                Training_Ag[i].getAffinity(
+                                    clonal_population.get(j)))) {
+                        if(clonal_population.get(j)!=null&&
+                                Training_Ag[i]!=null){
+                            clonal_population.get(j).Affinity = 
+                                Training_Ag[i].getAffinity(
+                                    clonal_population.get(j));
+                            clonal_population.get(j).classification=
+                                Training_Ag[i].classification;
+                            clonal_population.get(j).Ag=Training_Ag[i];
+                        }
                     }
                 }
             }
@@ -679,14 +694,12 @@ public class AINet {
                     if(Reconstructed_Antibody_Pool.get(i).getAffinity(
                             Reconstructed_Antibody_Pool.get(j)) < 
                             supression_threshold) {
-                        break;
+                        continue outerloop;
                     }
                 }
             }
-            if (j==size){
-                final_Reconstructed_Antibody_Pool.add(
-                    Reconstructed_Antibody_Pool.get(i));
-            }
+            final_Reconstructed_Antibody_Pool.add(
+                Reconstructed_Antibody_Pool.get(i));
         }
         msg=String.format("Ab pool size end: %d", Reconstructed_Antibody_Pool.size());
         log_debug(msg);
@@ -780,19 +793,16 @@ public class AINet {
 
     public void setupAINet(Antigen Whole_Ag[], Antigen Training_Ag[]){
 
-
+        String msg;
         Antibody Initial_Ab[]=new Antibody[Initial_AbScale];
         Antibody AbBase[]=new Antibody[BaseScale];
-
         //private  Antigen Whole_Ag[]=new Antigen[AgScale];
         ArrayList<Antibody> Reconstructed_Antibody_Pool = 
             new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
         ArrayList<Antibody> final_Reconstructed_Antibody_Pool = 
             new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
-        ArrayList<Antibody> clonal_population = 
-            new ArrayList<Antibody>(Clonal_BaseScale);
-        ArrayList<Antibody> final_clonal_population = 
-            new ArrayList<Antibody>(Clonal_BaseScale);
+        ArrayList<Antibody> clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
+        ArrayList<Antibody> final_clonal_population = new ArrayList<Antibody>(Clonal_BaseScale);
         //   initialize(Initial_Ab,AbBase ,Whole_Ag,Training_Ag);
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -838,7 +848,8 @@ public class AINet {
 //Take the top 'AbScale' number of antibodies with highest affinity
 
          int highest = 0;
-        for(int i=0;i<BaseScale;i++) {
+              for(int i=0;i<BaseScale;i++)
+              {
 
                  AbBase[i]=new Antibody();
                       AbBase[i]=new Antibody(Initial_Ab[i]);
@@ -869,7 +880,7 @@ public class AINet {
         int m=0;
         while(true){
             correctness_current_iteration = 
-                Whole_Affinity(AbBase,Training_Ag,Training_AgScale);
+                Whole_Affinity(AbBase,Training_Ag);
             System.out.println("after iteration "+ iter_count+" whole affinity is "+correctness_current_iteration);
             if(correctness_current_iteration > 0.99 || m >=20 || 
                     iter_count > MaxIter){
