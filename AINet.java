@@ -8,6 +8,7 @@ import java.util.ListIterator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.*;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.awt.Dimension;
@@ -26,7 +27,10 @@ public class AINet {
     private static final int DEFAULT_POPULATION_SIZE=100;
     private static final int DEFAULT_MAX_BREEDING_ITER = 100;
     private static final int DEFAULT_DIMENSIONS = 3;
-    private static boolean DEBUG=false;
+
+    //Logging 
+    private static final Level LOG_LEVEL=Level.INFO;
+    private static Logger log=null; 
 
     //*FIXME*
     //These should not be statics, but a property of each instantiation, but
@@ -65,6 +69,9 @@ public class AINet {
                 // Parse arguments... where's my beloved optarg?!
         int i=0;
         char opt=' ';
+
+        log_init();
+
         while ((i < args.length) && args[i].length() > 0 &&
                 (args[i].charAt(0) == '-')){
             opt = args[i++].charAt(1);
@@ -76,7 +83,17 @@ public class AINet {
                     System.exit(1);
                 case 'D':
                     System.out.println("Debugging enabled.");
-                    AINet.DEBUG=true;
+                    log.setLevel(Level.FINE);
+                    if (args[i-1].length() > 2 && 
+                            args[i-1].charAt(2) == 'D'){
+                        System.out.println("Extra Debugging enabled.");
+                        log.setLevel(Level.FINER);
+                    }
+                    if (args[i-1].length() > 3 && 
+                            args[i-1].charAt(3) == 'D'){
+                        System.out.println("Super Extra Debugging enabled.");
+                        log.setLevel(Level.FINEST);
+                    }
                     continue;
             }
 
@@ -93,7 +110,7 @@ public class AINet {
             switch(opt){
                 case 't':
                     msg=String.format("Loading training file \"%s\".", optarg_s);
-                    AINet.log_debug(msg);
+                    log.info(msg);
                     corpus_file=new File(optarg_s); 
                     if (!corpus_file.canRead()){
                         System.out.printf(
@@ -105,7 +122,7 @@ public class AINet {
                 case 'f':
                     msg=String.format(
                         "Loading data file \"%s\".", optarg_s);
-                    log_debug(msg);
+                    log.info(msg);
                     input_file=new File(optarg_s); 
                     if (!input_file.canRead()){
                         msg=String.format(
@@ -118,13 +135,13 @@ public class AINet {
                 case 'o':
                     msg=String.format(
                         "Creating output file \"%s\".", optarg_s);
-                    log_debug(msg);
+                    log.info(msg);
                     output_file=new File(optarg_s); 
                     break;
                 case 's':
                     msg=String.format(
                         "Setting scale to \"%s\".", optarg_s);
-                    log_debug(msg);
+                    log.info(msg);
                     BaseScale=Integer.valueOf(optarg_s); 
                     diversityCount=BaseScale*3;
                     Clonal_BaseScale=BaseScale*3;
@@ -132,13 +149,13 @@ public class AINet {
                 case 'i':
                     msg=String.format(
                         "Setting maximum iterations to \"%s\".", optarg_s);
-                    log_debug(msg);
+                    log.info(msg);
                     MaxIter=Integer.valueOf(optarg_s); 
                     break;
                 case 'd':
                     msg=String.format(
                         "Setting dimensions to \"%s\".", optarg_s);
-                    log_debug(msg);
+                    log.info(msg);
                     Dimensions=Integer.valueOf(optarg_s); 
                     break;
                 default:
@@ -158,17 +175,18 @@ public class AINet {
             System.exit(1);
         }
 
+        System.out.printf("Logging level %s.\n", log.getLevel());
 
         if (corpus_file == null) {
             msg=String.format("Loading default training file \"%s\".", 
                 DEFAULT_TRAINING_FILE);
-            log_debug(msg);
+            log.info(msg);
             corpus_file=new File(DEFAULT_TRAINING_FILE);
         } 
         if (input_file == null) {
             msg=String.format("Loading default data file \"%s\".", 
                 DEFAULT_DATA_FILE);
-            log_debug(msg);
+            log.info(msg);
             input_file=new File(DEFAULT_DATA_FILE);
         } 
 
@@ -187,7 +205,7 @@ public class AINet {
             reader=new BufferedReader(new FileReader(input_file));
             while((line_in=reader.readLine()) != null){
                 if (line_in.equals("")){
-                    log_debug("Blank line in input file skipped");
+                    log.fine("Blank line in input file skipped");
                     continue;
                 }
                 //Create an unclassified Antigen from the input row
@@ -216,7 +234,7 @@ public class AINet {
         Antigen[] inputData=tempData.toArray(new Antigen[tempData.size()]);
         
 	    AINet ais = new AINet(inputData,corpus_file);  	
-        log_debug("Classification results: ");
+        log.info("Classification results: ");
         int m;
         if (output_file != null){  
             try {
@@ -235,15 +253,40 @@ public class AINet {
                 System.exit(1);
             }
 
-        }
-        for (m=0; m < ais.Whole_Ag.length; m++){
-            System.out.println(ais.Whole_Ag[m]);
+        } else {
+            for (m=0; m < ais.Whole_Ag.length; m++){
+                System.out.println(ais.Whole_Ag[m]);
+            }
         }
 	}
 
-    private static void log_debug(String msg){
-        if (AINet.DEBUG){
-            System.out.println(msg);
+    private static void log_init(){
+        if (log!=null){
+            log.fine("Logger already initialized. Skipping.");
+            return;
+        }
+
+        log=Logger.getLogger("AINet");
+        log.setLevel(LOG_LEVEL);
+        
+        //Turn off the parent console handler, which has an independent level
+        //setting from this logger and can't be retrieved from child classes.
+        
+        log.setUseParentHandlers(false);
+        ConsoleHandler ch = new ConsoleHandler();
+        ch.setLevel(Level.FINEST);
+        ch.setFormatter(new ReadableFormatter());
+        log.addHandler(ch);
+
+
+        log.fine("Initialized logging system");
+        return;
+    }
+
+    private static class ReadableFormatter extends SimpleFormatter{
+        public String format(LogRecord record){
+            return String.format("<%s.%s>: %s\n", record.getSourceClassName(), 
+                record.getSourceMethodName(), record.getMessage());
         }
     }
 
@@ -638,7 +681,7 @@ public class AINet {
 
         msg=String.format("Clonal_Pop = %d Final_Pop = %d.", 
             size, final_clonal_population.size());
-        log_debug(msg);
+        log.finer(msg);
 
         // *FIXME* Remove the element from the original list
         outer:
@@ -667,7 +710,7 @@ public class AINet {
         String msg;
         msg=String.format("Ab pool size start: %d.", 
             Reconstructed_Antibody_Pool.size());
-        log_debug(msg);
+        log.finer(msg);
 
         for(int i = 0;i<BaseScale;i++){
             Reconstructed_Antibody_Pool.add(AbBase[i]);
@@ -676,7 +719,7 @@ public class AINet {
 
         msg=String.format("Ab pool size end: %d.", 
             Reconstructed_Antibody_Pool.size());
-        log_debug(msg);
+        log.finer(msg);
     }
 
     //network supression
@@ -688,7 +731,7 @@ public class AINet {
 
         msg=String.format("Ab pool size start: %d.", 
             Reconstructed_Antibody_Pool.size());
-        log_debug(msg);
+        log.finer(msg);
 
         outer:
         for(Antibody ab1 : Reconstructed_Antibody_Pool){
@@ -704,7 +747,7 @@ public class AINet {
         }
         msg=String.format("Ab pool size end: %d", 
             Reconstructed_Antibody_Pool.size());
-        log_debug(msg);
+        log.finer(msg);
     }
 
 
@@ -754,7 +797,7 @@ public class AINet {
                 new BufferedReader(new FileReader(corpus_file));
             while((line_in=reader.readLine()) != null){
                 if (line_in.equals("")){
-                    log_debug("Blank line in input file skipped");
+                    log.fine("Blank line in input file skipped");
                     continue;
                 }
                 temp_training_ag.add(Antigen.valueOf(line_in));
@@ -787,7 +830,7 @@ public class AINet {
         System.out.println("Dumping training set:");
         for(int i=0; i < Training_AgScale; i++){
             msg=String.format("[%d]: %s", i, Training_Ag[i]);
-            log_debug(msg);
+            log.fine(msg);
         }
         return Training_Ag;
     }
@@ -863,38 +906,38 @@ public class AINet {
                 iter_count++ <= MaxIter){
 
             Clonal_Expansion(AbBase,clonal_population,Training_Ag);
-            log_debug("Size after clonal_expansion " +
+            log.fine("Size after clonal_expansion " +
                 clonal_population.size());
 
             Affinity_Maturation(clonal_population,AbBase,Training_Ag);
-            log_debug("Size after Affinity maturation " +
+            log.fine("Size after Affinity maturation " +
                 clonal_population.size());
 
             Metadynamics(clonal_population);
-            log_debug("Size after metadynamics " +
+            log.fine("Size after metadynamics " +
                 clonal_population.size());
 
             //*FIXME* don't switch lists here
             Clonal_Supression(clonal_population,final_clonal_population);
-            log_debug("Size after clonal supression " +
+            log.fine("Size after clonal supression " +
                 final_clonal_population.size());
 
             //*FIXME* Or here
             Network_Reconstruction(Reconstructed_Antibody_Pool, 
                 final_clonal_population, AbBase);
-            log_debug("Size after Network reconstruction " +
+            log.fine("Size after Network reconstruction " +
                 Reconstructed_Antibody_Pool.size());
 
             //*FIXME* Or here -- also this is the same call as 
             // Clonal_Supression() above
             Network_Interaction_Supression(Reconstructed_Antibody_Pool,
                 final_Reconstructed_Antibody_Pool);
-            log_debug("Size after Network Supression " +
+            log.fine("Size after Network Supression " +
                 Reconstructed_Antibody_Pool.size());
 
             Introduce_Diversity(final_Reconstructed_Antibody_Pool,
                 Training_Ag);
-            log_debug("Size after Diversity " +
+            log.fine("Size after Diversity " +
                 final_Reconstructed_Antibody_Pool.size());
 
 
@@ -935,9 +978,12 @@ public class AINet {
 
             correctness_current_iteration = 
                 Whole_Affinity(AbBase,Training_Ag);
+            msg=String.format("Affinity after %d iterations: %d.", 
+                iter_count, correctness_current_iteration);
+            log.info(msg);
         }
         msg=String.format("Exited while loop (%d iterations).", iter_count);
-        log_debug(msg);
+        log.info(msg);
 
         for(int i=0;i<BaseScale;i++) {
             System.out.println(AbBase[i]);
@@ -992,7 +1038,7 @@ public class AINet {
         int col_len=TRGB[0].length;
         int[][] inputData = new int[row_len*col_len][Dimensions]; 
         String msg=String.format("Rows: %d, Cols: %s", row_len, col_len);
-        log_debug(msg);
+        log.fine(msg);
         //There are 4 bands, but we don't care about the transparency
         int bands=3;
 
@@ -1022,6 +1068,8 @@ public class AINet {
         //irrelevant
         this.TRGB=new int[4][inputData.length][1];
 
+        log_init();
+
         Whole_Ag=new Antigen[inputData.length];
         for (int i=0; i < inputData.length; i++){
             Whole_Ag[i]=new Antigen(inputData[i]);
@@ -1031,10 +1079,11 @@ public class AINet {
         //*FIXME* We should be checking this when we use it, not relying on a
         //global
         Training_AgScale=Training_Ag.length;
-        log_debug("Antibodies:");
+        msg=String.format("Antibodies (%d):",Training_Ag.length);
+        log.info(msg);
         for(int n=0; n < Training_Ag.length; n++){
             msg=String.format("%s", Training_Ag[n]);
-            log_debug(msg);
+            log.info(msg);
         }
         setupAINet(Whole_Ag,Training_Ag);
     }
@@ -1056,7 +1105,7 @@ public class AINet {
         System.out.println("Antibodies:");
         for(int n=0; n < Training_Ag.length; n++){
             msg=String.format("%s", Training_Ag[n]);
-            log_debug(msg);
+            log.info(msg);
         }
         setupAINet(Whole_Ag,Training_Ag);
     }
@@ -1066,7 +1115,7 @@ public class AINet {
         int i=0;
         msg=String.format("Generating TRGB array of size %d,%d,%d\n",
             TRGB.length, TRGB[0].length,TRGB[0][0].length);
-        log_debug(msg);
+        log.info(msg);
         for(int row=0;row<TRGB[0][0].length;row++)
         for (int column = 0; column <TRGB[0].length; column++)
         {

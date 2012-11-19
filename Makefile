@@ -1,7 +1,7 @@
 SOURCES=ImagePimp.java AINet.java
 OBJECTS=$(SOURCES:.java=.class)
 AIS_OBJS=AINet\$$Antibody.class  AINet\$$Antigen.class  AINet\$$Cell.class  \
-	AINet.class
+	AINet\$$ReadableFormatter.class AINet.class
 
 
 all: build package

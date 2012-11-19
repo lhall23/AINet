@@ -15,18 +15,34 @@ TRIALS=5
 
 SAVE=true
 
+function usage(){
+    echo -en "Usage:\n"
+    echo -en "\t-t:\tTest mode (Don't save output, enable debugging)\n"
+    echo -en "\t-d:\tEnable debugging\n"
+    echo -en "\t-h:\tPrint this message\n"
+}
+
 # Get options 
-while getopts "t" OPT; do
+while getopts "tdh" OPT; do
     case $OPT in
         t)
             echo "Test run. Reporting disabled, debugging enabled."
             SAVE=false;
             DEBUG="-D";
-        ;;
+            ;;
+        d)
+            echo "Debugging enabled."
+            DEBUG="-D";
+            ;;
+        h)
+            usage;
+            exit 0;
+            ;;
         *)
             echo "Option not recognized"
+            usage;
             exit 1;
-        ;;
+            ;;
     esac
 done
 shift $(( $OPTIND - 1 ))
