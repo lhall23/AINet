@@ -9,7 +9,7 @@ GIT_HASH="$(git log -n1 --format=%H HEAD)"
 GIT_DATE="$(git log -n1 --format=%aD HEAD)"
 
 OUTPUT="$(mktemp)"
-SCALE=100
+SCALE=500
 ITERATIONS=100
 TRIALS=5
 
