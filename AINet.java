@@ -671,31 +671,40 @@ public class AINet {
     }
 
     //*FIXME* Why does this look identical to Network_Interaction_Supression()?
+    // Clonal_Supression() Should operate only on the memory set, and
+    // Network_Suppression should operate on the full Antigen set.
+    //
     //Remove those clones whose affinity with each other is less than the 
     //supression threshold
     public static void Clonal_Supression(
-            ArrayList<Antibody> clonal_population,
-            ArrayList<Antibody> final_clonal_population){
+            ArrayList<Antibody> clonal_population){
+        
         String msg;
-        int size = clonal_population.size();
-
-        msg=String.format("Clonal_Pop = %d Final_Pop = %d.", 
-            size, final_clonal_population.size());
+        msg=String.format("Clonal_Pop = %d.", clonal_population.size());
         log.finer(msg);
 
-        // *FIXME* Remove the element from the original list
-        outer:
-        for(Antibody ab1: clonal_population){
+        Antibody ab1=null;
+        for(ListIterator<Antibody> i = clonal_population.listIterator(); 
+                i.hasNext(); ab1 = i.next()){ 
             if(ab1 == null) continue;
             for(Antibody ab2: clonal_population){
                 if(ab2 == null) continue;
-                if(ab1 == ab2) continue outer;
-                if(ab1.getAffinity(ab2) < supression_threshold){
-                    continue outer;
+                //Since the iterator gives us the same ordering both times, 
+                //this lets us avoid checking ab1(ab2) and ab2(ab1)
+                if(ab1 == ab2) break;
+
+                //If any element has an affinity less than the supression
+                //threshold, remove it and go to the next one
+                // *FIXME* I think this test may be backwards.
+                if(ab1.getAffinity(ab2) <= supression_threshold){
+                    i.remove();
+                    break;
                 }
             }
-            final_clonal_population.add(ab1);
         }
+
+        msg=String.format("Clonal_Pop = %d.", clonal_population.size());
+        log.finer(msg);
     }
 
 
@@ -725,26 +734,34 @@ public class AINet {
     //network supression
     // *FIXME* This is identical to Clonal_Supression
     public static void Network_Interaction_Supression(
-            ArrayList<Antibody> Reconstructed_Antibody_Pool,
-            ArrayList<Antibody> final_Reconstructed_Antibody_Pool){
-        String msg;
+            ArrayList<Antibody> Reconstructed_Antibody_Pool) {
 
+        String msg;
         msg=String.format("Ab pool size start: %d.", 
             Reconstructed_Antibody_Pool.size());
         log.finer(msg);
 
-        outer:
-        for(Antibody ab1 : Reconstructed_Antibody_Pool){
+        Antibody ab1=null;
+        for(ListIterator<Antibody> i=
+                Reconstructed_Antibody_Pool.listIterator(); i.hasNext(); 
+                ab1=i.next()){
             if (ab1==null) continue;
             for(Antibody ab2 : Reconstructed_Antibody_Pool ){
                 if (ab2==null) continue;
-                if(ab1 == ab2) continue outer;
-                if(ab1.getAffinity(ab2) < supression_threshold) {
-                    continue outer;
+                //Since the iterator gives us the same ordering both times, 
+                //this lets us avoid checking ab1(ab2) and ab2(ab1)
+                if(ab1 == ab2) break;
+
+                //If any element has an affinity less than the supression
+                //threshold, remove it and go to the next one
+                // *FIXME* I think this test may be backwards.
+                if (ab1.getAffinity(ab2) >= supression_threshold) {
+                    i.remove();
+                    break;
                 }
             }
-            final_Reconstructed_Antibody_Pool.add(ab1);
         }
+
         msg=String.format("Ab pool size end: %d", 
             Reconstructed_Antibody_Pool.size());
         log.finer(msg);
@@ -847,11 +864,7 @@ public class AINet {
         Antibody AbBase[]=new Antibody[BaseScale];
         ArrayList<Antibody> Reconstructed_Antibody_Pool = 
             new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
-        ArrayList<Antibody> final_Reconstructed_Antibody_Pool = 
-            new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
         ArrayList<Antibody> clonal_population = 
-            new ArrayList<Antibody>(Clonal_BaseScale);
-        ArrayList<Antibody> final_clonal_population = 
             new ArrayList<Antibody>(Clonal_BaseScale);
 
         //randomly generate all the antibodies
@@ -917,29 +930,26 @@ public class AINet {
             log.fine("Size after metadynamics " +
                 clonal_population.size());
 
-            //*FIXME* don't switch lists here
-            Clonal_Supression(clonal_population,final_clonal_population);
+            Clonal_Supression(clonal_population);
             log.fine("Size after clonal supression " +
-                final_clonal_population.size());
+                clonal_population.size());
 
-            //*FIXME* Or here
+            //*FIXME* This is a different data structure in the paper, because
+            // they have a memory set and a breeding set of antibodies. That's
+            // not the case with this implementation.
             Network_Reconstruction(Reconstructed_Antibody_Pool, 
-                final_clonal_population, AbBase);
+                clonal_population, AbBase);
             log.fine("Size after Network reconstruction " +
                 Reconstructed_Antibody_Pool.size());
 
-            //*FIXME* Or here -- also this is the same call as 
-            // Clonal_Supression() above
-            Network_Interaction_Supression(Reconstructed_Antibody_Pool,
-                final_Reconstructed_Antibody_Pool);
+            Network_Interaction_Supression(Reconstructed_Antibody_Pool);
             log.fine("Size after Network Supression " +
                 Reconstructed_Antibody_Pool.size());
 
-            Introduce_Diversity(final_Reconstructed_Antibody_Pool,
+            Introduce_Diversity(Reconstructed_Antibody_Pool,
                 Training_Ag);
             log.fine("Size after Diversity " +
-                final_Reconstructed_Antibody_Pool.size());
-
+                Reconstructed_Antibody_Pool.size());
 
             //Find the top 'baseScale' antibodies from the final
             //reconstructed antibody pool and repeate the loop
@@ -948,9 +958,10 @@ public class AINet {
             // of them at random
 
             int c=0;
-            for(int i=0;i<AbBase.length;i++){
+            for(int i=0;i<AbBase.length && 
+                    i <Reconstructed_Antibody_Pool.size(); i++){
                 AbBase[i]=
-                    new Antibody(final_Reconstructed_Antibody_Pool.get(i));
+                    new Antibody(Reconstructed_Antibody_Pool.get(i));
             }
            
             // *FIXME*  
@@ -958,27 +969,27 @@ public class AINet {
             //(Other than cause a crash when it's larger than BaseScale)
             //
             //This copies the element with the largest affinity from
-            //final_reconstructed_Antibody_Pool[10:-1] over each element in
-            //final_reconstructed_Antibody_Pool[0:10] that has a smaller
+            //Reconstructed_Antibody_Pool[10:-1] over each element in
+            //Reconstructed_Antibody_Pool[0:10] that has a smaller
             //affinity, and sets the original Affinity to 0 
 
             for(int j=0;j<10;j++) {
-                for(int i=10;i<final_Reconstructed_Antibody_Pool.size();
+                for(int i=10;i<Reconstructed_Antibody_Pool.size();
                         i++) {
                     if((AbBase[j].Affinity<
-                        final_Reconstructed_Antibody_Pool.get(i).Affinity)){
+                        Reconstructed_Antibody_Pool.get(i).Affinity)){
 
                         AbBase[j]=new Antibody(
-                            final_Reconstructed_Antibody_Pool.get(i));
+                            Reconstructed_Antibody_Pool.get(i));
                         c=i;
                     }
-                    final_Reconstructed_Antibody_Pool.get(c).Affinity = 0;
+                    Reconstructed_Antibody_Pool.get(c).Affinity = 0;
                 } 
             }
 
             correctness_current_iteration = 
                 Whole_Affinity(AbBase,Training_Ag);
-            msg=String.format("Affinity after %d iterations: %d.", 
+            msg=String.format("Affinity after %d iterations: %f.", 
                 iter_count, correctness_current_iteration);
             log.info(msg);
         }
