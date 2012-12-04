@@ -509,6 +509,7 @@ public class AINet {
     // element of Ab[]
     //Used to find the overall correctness
     public static double Whole_Affinity(Antibody []Ab,Antigen []Ag){
+        log.warning("Whole_Affinity(Antibody[], Antigen[]) is deprecated");
         int correct=0;
         Antibody ab = null;
         for(int i=0;i<Ag.length;i++){
@@ -525,63 +526,50 @@ public class AINet {
         return correct/(double)Ag.length;
     }
 
+    // Find the percentage of ag_list<Antigen> which is classified the same as
+    // the closest element of ab_list<Antibody>. 
+    // Used to find the overall correctness
+    // This replaces the old array based version
+    public static double Whole_Affinity(List<Antibody> ab_list,
+            List<Antigen> ag_list){
+        int correct=0;
+        Antibody closest_ab; 
+        for(Antigen ag : ag_list){
+            closest_ab = null;
+            //Antigen: findClosest(List<Antibody>) return Antibody
+            for(Antibody ab : ab_list){
+                if(closest_ab == null ||
+                        (ag.getAffinity(ab)<ag.getAffinity(closest_ab))){
+                    closest_ab=ab;
+                }
+            }
+            if(ag.classification==closest_ab.classification){
+                correct++;
+            }
+        }
+        return correct/(double)ag_list.size();
+    }
+
     //Generate clone_population
-    public void Clonal_Expansion(Antibody[] AbBase,
-            ArrayList<Antibody> clonal_population,
-            Antigen[] Training_Ag){
+    public void Clonal_Expansion(List<Antibody> AbBase,
+            List<Antibody> clonal_population){
 
         int clone_count = 0, i = 0,j = 0;
         Random rand = new Random();
-        Antibody ab = null;
-        Antigen ag = null;
 
         //Generate clones for each antibody
-        for(i = 0;i < BaseScale; i++) {
+        for(Antibody ab : AbBase) {
             // If Affinity is high, generate 3 clones, 
             // otherwise randomly choose 1 or 2
-            if((AbBase[i].Affinity/2) > rand.nextDouble()) {
+            if((ab.Affinity/2) > rand.nextDouble()) {
                 clone_count = 3;
             } else {
                 clone_count = rand.nextInt(2) + 1;
             }
             for(j = 0;j < clone_count; j++){
-                ab = new Antibody();
-                    // //Perturb the clones?
-                    // for(int k = 0;k<Dimensions;k++){
-                    //     if(AbBase[i].Affinity/2>rand.nextDouble())
-                    //         ab.value[k]=(double) (AbBase[i].value[k]);
-                    //     else
-                    //         ab.value[k]=rand.nextDouble()*MaxValue;
-                    // }
-                ab=new Antibody(AbBase[i]);
-                clonal_population.add(ab);
+                clonal_population.add(new Antibody(ab));
             }
         }
-        // *FIXME* 
-        // Clean this mess up. Since these are just copies and aren't 
-        // being randomized, this doesn't do anything at all, unless the
-        // classification was already out of sync
-        //
-        // We should remove the null checks as well, and hunt down why the
-        // lists are getting mangled instead of just ignoring it.
-        //
-        // Classify the new clones against the training set.
-        for(j=0;j<clonal_population.size();j++){
-            for(i=0;i<Training_Ag.length;i++){
-                ab=clonal_population.get(j);
-                ag=Training_Ag[i];
-                if(ab!=null&& ag!=null){
-                    if(i==0||(ab.Affinity < ag.getAffinity(ab))){
-                        ab.Affinity=ag.getAffinity(ab);
-                        ab.classification=ag.classification;
-                        ab.Ag=ag;
-                    }
-                }
-            }
-        }
-        // System.out.print("\nclonal expansion :\n");
-        // for(i = 0;i < clonal_population.size(); i++)
-        //     System.out.println(clonal_population.get(i));
     }
 
     //Mutate the clone population inversly proportional to affinity
@@ -850,7 +838,7 @@ public class AINet {
         Antibody ab;
         Antigen ag;
 
-        Antibody Initial_Ab[]=new Antibody[Initial_AbScale];
+        List<Antibody> Initial_Ab=new ArrayList<Antibody>(Initial_AbScale);
         Antibody AbBase[]=new Antibody[BaseScale];
         ArrayList<Antibody> Reconstructed_Antibody_Pool = 
             new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
@@ -861,7 +849,7 @@ public class AINet {
         Random random=new Random();
 
         for(int i=0;i<Initial_AbScale;i++){ 
-            Initial_Ab[i]=new Antibody();
+            Initial_Ab.add(new Antibody());
             for(int j=0;j<Dimensions;j++){
                 Initial_Ab[i].setValue(j,random.nextDouble()*MaxValue);
             }
@@ -885,20 +873,25 @@ public class AINet {
         }
 
         //Take the top 'AbScale' number of antibodies with highest affinity
-        int highest = 0;
         for(int i=0;i<AbBase.length;i++) {
             AbBase[i]=new Antibody(Initial_Ab[i]);
         }
         // *FIXME* 
         // Is this supposed to be bubble sort?
         // findClosest()
-        for(int j=0;j<AbBase.length;j++) {
-            for(int i=BaseScale;i<Initial_Ab.length;i++)
-            if((AbBase[j].Affinity<Initial_Ab[i].Affinity)) {
-                AbBase[j]=new Antibody(Initial_Ab[i]);
-                highest = i;
+       
+        Antibody highest;
+        Antibody base_ab;
+        ListIterator<Antibody> iter=AbBase.listIterator();
+        while(iter.hasNext()) { 
+            base_ab=iter.next();//j
+            for(Antibody init_ab : Initial_Ab){ //i
+                if(base_ab.Affinity<init_ab.Affinity) {
+                    iter.set(new Antibody(init_ab));
+                    highest = init_ab;
+                }
             }
-            Initial_Ab[highest].Affinity=0;
+            highest.Affinity=0;
         }
 
         int iter_count = 0;
@@ -908,7 +901,7 @@ public class AINet {
         while(correctness_current_iteration < 0.99 && 
                 iter_count++ <= MaxIter){
 
-            Clonal_Expansion(AbBase,clonal_population,Training_Ag);
+            Clonal_Expansion(AbBase,clonal_population);
             log.fine("Size after clonal_expansion " +
                 clonal_population.size());
 
@@ -948,10 +941,11 @@ public class AINet {
             // of them at random
 
             int c=0;
-            for(int i=0;i<AbBase.length && 
+
+            for(int i=0;i<AbBase.size() && 
                     i <Reconstructed_Antibody_Pool.size(); i++){
-                AbBase[i]=
-                    new Antibody(Reconstructed_Antibody_Pool.get(i));
+                AbBase.set(i, new Antibody(
+                    Reconstructed_Antibody_Pool.get(i)));
             }
            
             // *FIXME*  
@@ -963,14 +957,14 @@ public class AINet {
             //Reconstructed_Antibody_Pool[0:10] that has a smaller
             //affinity, and sets the original Affinity to 0 
 
-            for(int j=0;j<10;j++) {
+            for(int j=0;j<10 && j < AbBase.size();j++) {
                 for(int i=10;i<Reconstructed_Antibody_Pool.size();
                         i++) {
-                    if((AbBase[j].Affinity<
+                    if((AbBase.get(j).Affinity<
                         Reconstructed_Antibody_Pool.get(i).Affinity)){
 
-                        AbBase[j]=new Antibody(
-                            Reconstructed_Antibody_Pool.get(i));
+                        AbBase.set(j,new Antibody( 
+                            Reconstructed_Antibody_Pool.get(i)));
                         c=i;
                     }
                     Reconstructed_Antibody_Pool.get(c).Affinity = 0;
