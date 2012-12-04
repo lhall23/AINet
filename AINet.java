@@ -199,7 +199,7 @@ public class AINet {
 
         // Read the input data file
         BufferedReader reader;
-        ArrayList<Antigen> tempData = new ArrayList<Antigen>();
+        ArrayList<Antigen> inputData = new ArrayList<Antigen>();
         String line_in=null;
         try {
             reader=new BufferedReader(new FileReader(input_file));
@@ -209,7 +209,7 @@ public class AINet {
                     continue;
                 }
                 //Create an unclassified Antigen from the input row
-                tempData.add(Antigen.valueOf(line_in,false));
+                inputData.add(Antigen.valueOf(line_in,false));
             }
         }
         catch (FileNotFoundException e){
@@ -230,8 +230,6 @@ public class AINet {
             System.out.println(msg);
             System.exit(1);
         }
-
-        Antigen[] inputData=tempData.toArray(new Antigen[tempData.size()]);
         
 	    AINet ais = new AINet(inputData,corpus_file);  	
         log.info("Classification results: ");
@@ -240,8 +238,8 @@ public class AINet {
             try {
                 BufferedWriter writer=
                     new BufferedWriter(new FileWriter(output_file));
-                for (m=0; m < ais.Whole_Ag.length; m++){
-                    writer.write(ais.Whole_Ag[m].toString());
+                for (m=0; m < ais.Whole_Ag.size(); m++){
+                    writer.write(ais.Whole_Ag.get(m).toString());
                     writer.newLine();
                 }
                 writer.close();
@@ -254,8 +252,8 @@ public class AINet {
             }
 
         } else {
-            for (m=0; m < ais.Whole_Ag.length; m++){
-                System.out.println(ais.Whole_Ag[m]);
+            for (m=0; m < ais.Whole_Ag.size(); m++){
+                System.out.println(ais.Whole_Ag.get(m));
             }
         }
 	}
@@ -301,7 +299,7 @@ public class AINet {
      * New Class vars
      */
 
-    private Antigen Whole_Ag[];
+    private List<Antigen> Whole_Ag;
     Dimension imageInDimension;
     int TRGB[][][];
 
@@ -688,7 +686,6 @@ public class AINet {
 
                 //If any element has an affinity less than the supression
                 //threshold, remove it and go to the next one
-                // *FIXME* I think this test may be backwards.
                 if(ab1.getAffinity(ab2) <= supression_threshold){
                     i.remove();
                     break;
@@ -847,7 +844,7 @@ public class AINet {
 
 
 
-    public void setupAINet(Antigen Whole_Ag[], Antigen Training_Ag[]){
+    public void setupAINet(List<Antigen> Whole_Ag, Antigen Training_Ag[]){
 
         String msg;
         Antibody ab;
@@ -999,13 +996,13 @@ public class AINet {
         //}//end of runainet
 
         ab = new Antibody();
-        for(int i=0;i<Whole_Ag.length;i++) {
+        for(int i=0;i<Whole_Ag.size();i++) {
             //*FIXME* Why are we using AbBase[1] here?
             ab=new Antibody(AbBase[1]);
             for(int j=1;j<AbBase.length;j++) {
-                if(Whole_Ag[i].getAffinity(AbBase[j])>
-                        Whole_Ag[i].getAffinity(ab)){
-                    Whole_Ag[i].classification=AbBase[j].classification;
+                if(Whole_Ag.get(i).getAffinity(AbBase[j])>
+                        Whole_Ag.get(i).getAffinity(ab)){
+                    Whole_Ag.get(i).classification=AbBase[j].classification;
                     ab=new Antibody(AbBase[j]);
                 }
             }
@@ -1037,68 +1034,37 @@ public class AINet {
         this(TRGBto2dArray(TRGB), new File(DEFAULT_TRAINING_FILE));     
     }
 
-    public static int[][] TRGBto2dArray(int[][][] TRGB){
+    public static List<Antigen> TRGBto2dArray(int[][][] TRGB){
         int row_len=TRGB[0][0].length;
         int col_len=TRGB[0].length;
-        int[][] inputData = new int[row_len*col_len][Dimensions]; 
+        List<Antigen> inputData = new ArrayList<Antigen>(Dimensions); 
         String msg=String.format("Rows: %d, Cols: %s", row_len, col_len);
         log.fine(msg);
         //There are 4 bands, but we don't care about the transparency
         int bands=3;
-
-        //Following loop from getResults() -- rowmajor or column major flattening
-        //shouldn't matter as long as it's consistent
+        int[] antigen_array= new int[bands];
+        //Following loop from getResults() -- rowmajor or column major
+        //flattening shouldn't matter as long as it's consistent
         for (int row=0; row < row_len; row++){
             for (int col=0; col < col_len; col++){
                 for (int k=0; k < bands; k++){
-                    inputData[row * col_len + col][k]=TRGB[k+1][col][row];
+                    antigen_array[k]=TRGB[k+1][col][row];
                 }
+                inputData.add(new Antigen(antigen_array));
             }
         }
         return inputData;
     }
 
-    /* 
-     * This will be the final constructor. If a 2d array is passed in and
-     * returned, the AINet module doesn't need to know anything about images,
-     * ImagePimps array conversions or the dimensions of what is being looked
-     * at.
-     */
-    public AINet(int[][] inputData, File corpus_file) throws Exception{
+    public AINet(List<Antigen> inputData, File corpus_file){
         String msg;
         //*KILLME* This makes sure that TRGB is initialized for getResults()
         //when this is the only constructor called. Since getResults should be
         //returning a flattened array anyway, the original dimensions are
         //irrelevant
-        this.TRGB=new int[4][inputData.length][1];
+        this.TRGB=new int[4][inputData.size()][1];
 
         log_init();
-
-        Whole_Ag=new Antigen[inputData.length];
-        for (int i=0; i < inputData.length; i++){
-            Whole_Ag[i]=new Antigen(inputData[i]);
-        }
-
-        Antigen[] Training_Ag=get_training_set(corpus_file);
-        //*FIXME* We should be checking this when we use it, not relying on a
-        //global
-        Training_AgScale=Training_Ag.length;
-        msg=String.format("Antibodies (%d):",Training_Ag.length);
-        log.info(msg);
-        for(int n=0; n < Training_Ag.length; n++){
-            msg=String.format("%s", Training_Ag[n]);
-            log.info(msg);
-        }
-        setupAINet(Whole_Ag,Training_Ag);
-    }
-
-    public AINet(Antigen[] inputData, File corpus_file){
-        String msg;
-        //*KILLME* This makes sure that TRGB is initialized for getResults()
-        //when this is the only constructor called. Since getResults should be
-        //returning a flattened array anyway, the original dimensions are
-        //irrelevant
-        this.TRGB=new int[4][inputData.length][1];
 
         Whole_Ag=inputData;
 
@@ -1123,33 +1089,33 @@ public class AINet {
         for(int row=0;row<TRGB[0][0].length;row++)
         for (int column = 0; column <TRGB[0].length; column++)
         {
-            if(Whole_Ag[i] != null) {
+            if(Whole_Ag.get(i) != null) {
                 TRGB[0][column][row]=255;
-                if(Whole_Ag[i].classification==1)
+                if(Whole_Ag.get(i).classification==1)
                 {
                     TRGB[1][column][row]=255;//55;
                     TRGB[2][column][row]=222;//255;//128;
                     TRGB[3][column][row]=10;//78;
                 }
-                else if(Whole_Ag[i].classification==2)
+                else if(Whole_Ag.get(i).classification==2)
                 {
                     TRGB[1][column][row]=0;
                     TRGB[2][column][row]=0;//64;//75;
                     TRGB[3][column][row]=215;//78;
                 }
-                else if(Whole_Ag[i].classification==3)
+                else if(Whole_Ag.get(i).classification==3)
                 {
                     TRGB[1][column][row]=0;
                     TRGB[2][column][row]=215;
                     TRGB[3][column][row]=0;
                 }
-                else if(Whole_Ag[i].classification==4)
+                else if(Whole_Ag.get(i).classification==4)
                 {
                     TRGB[1][column][row]=215;
                     TRGB[2][column][row]=0;
                     TRGB[3][column][row]=0;
                 }
-                else if(Whole_Ag[i].classification==5)
+                else if(Whole_Ag.get(i).classification==5)
                 {
                     TRGB[1][column][row]=0;
                     TRGB[2][column][row]=10;
