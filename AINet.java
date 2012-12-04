@@ -361,21 +361,14 @@ public class AINet {
             return retString.toString();
         }
 
-        //*FIXME* We should calculate this correctly, but first, refactor
         public double getAffinity(Cell neighbor){
             double EuclidianDistance = 0;
             for(int i=0;i<Dimensions;i++) {
-                //EuclidianDistance=(double)EuclidianDistance+
-                //  ((this.value[i]-neighbor.value[i])*
-                //  (this.value[i]-neighbor.value[i]));
-                //return (double)(1/1+Math.sqrt(EuclidianDistance));
-                EuclidianDistance = EuclidianDistance+
-                    Math.abs(this.value[i] - neighbor.value[i]);
+                EuclidianDistance += 
+                    Math.pow(Math.abs(this.value[i] - neighbor.value[i]),2);
             }
-            return (1/EuclidianDistance);
+            return (1/Math.sqrt(EuclidianDistance));
         }
-
-
 
         //Promote an array of ints to an array of doubles
         private static double[] promote(int[] input){
@@ -663,11 +656,6 @@ public class AINet {
                 iter.remove();
             }
         }
-
-         /*   System.out.println("\n after metadynamics :\n" );
-        for(int i = 0;i < clonal_population.size(); i++)
-            System.out.println(clonal_population.get(i));
-        */
     }
 
     //*FIXME* Why does this look identical to Network_Interaction_Supression()?
