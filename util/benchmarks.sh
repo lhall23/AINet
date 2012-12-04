@@ -9,8 +9,8 @@ GIT_HASH="$(git log -n1 --format=%H HEAD)"
 GIT_DATE="$(git log -n1 --format=%aD HEAD)"
 
 OUTPUT="$(mktemp)"
-SCALE=500
-ITERATIONS=100
+SCALE=50
+ITERATIONS=50
 TRIALS=5
 
 SAVE=true
@@ -107,7 +107,7 @@ for TEST in $TEST_LIST; do
     DIMENSIONS="$( sed -n '1s/[^\t ,]*[\t ,]\+/@/gp' "${TEST}/classified.txt" | 
         tr -d -c @ | wc -c)";
     TOTAL="$( wc -l "${TEST}/classified.txt" | cut -d \  -f1 )"
-    TEST_NAME="$(basename $TEST)"
+    TEST_NAME="$(basename $TEST | sed 's/[0-9]\+-//')"
     BENCHMARK_ID="$(
         echo "SELECT benchmark_id FROM benchmark WHERE name='$TEST_NAME'" |
             psql -t -d ais | tr -d [:space:])"

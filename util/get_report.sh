@@ -12,6 +12,7 @@ if [ ! -z "$1" ]; then
         exit 1;
     }
     CONSTRAINT="WHERE source_id=$SOURCE_ID";
+    git log --oneline "$COMMIT" | head -1
 fi
 echo "
 SELECT name,scale,iterations, 

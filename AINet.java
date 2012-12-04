@@ -32,6 +32,9 @@ public class AINet {
     private static final Level LOG_LEVEL=Level.INFO;
     private static Logger log=null; 
 
+    //RNG -- no need to have multiple copies of this.
+    public static Random rand=new Random();
+
     //*FIXME*
     //These should not be statics, but a property of each instantiation, but
     //we'll deal with that later.
@@ -288,8 +291,6 @@ public class AINet {
         }
     }
 
-    private int Training_AgScale;
-
     private static int MaxValue=255;
     private static final int Initial_AbScale=1000;
     private static double supression_threshold = 0.09;
@@ -305,7 +306,7 @@ public class AINet {
 
     public static abstract class Cell {
         protected static final int DEFAULT_CLASS=0;
-        private static final int DEFAULT_VAL=0;
+        private static int DEFAULT_VAL=MaxValue/2;
         //Regex to split input strings
         protected static String split_on= "[, \t]+";
 
@@ -332,6 +333,22 @@ public class AINet {
                 this.value[i]=DEFAULT_VAL;
             }
             this.classification=DEFAULT_CLASS;
+        }
+
+        public void randomize(){
+           this.randomize(1.0); 
+        }
+
+        // Set each element of the vector to a random value between 
+        // +/- mutation/2. A value of 1.0 (as is the default), should have an
+        // equal chance of choosing every element between 0 and MaxValue if we
+        // start at MaxValue/2
+        public void randomize(double mutation){
+            double delta;
+            for(int i=0;i<Dimensions;i++){
+                delta=(rand.nextDouble() - .5) * mutation* MaxValue ; 
+                this.value[i]+=delta;
+            }
         }
 
         public Cell findClosest(List<Cell> in_list){
@@ -554,8 +571,7 @@ public class AINet {
     public void Clonal_Expansion(List<Antibody> AbBase,
             List<Antibody> clonal_population){
 
-        int clone_count = 0, i = 0,j = 0;
-        Random rand = new Random();
+        int clone_count = 0, j = 0;
 
         //Generate clones for each antibody
         for(Antibody ab : AbBase) {
@@ -573,36 +589,20 @@ public class AINet {
     }
 
     //Mutate the clone population inversly proportional to affinity
-    public void Affinity_Maturation(ArrayList<Antibody> clonal_population,
-            Antibody[] AbBase,Antigen[] Training_Ag){
+    public void Affinity_Maturation(List<Antibody> clonal_population,
+            List<Antigen> Training_Ag){
 
-        Random rand = new Random();
-        int total_clone_count = clonal_population.size();
-        double alpha;
-        for(int i = 0;i < total_clone_count;i++){
-            for(int j = 0;j<Dimensions;j++){
-                //Select a random number between +/-Affinity to add to each 
-                //value
-                alpha=2 * clonal_population.get(i).Affinity *
-                    (rand.nextDouble() - 0.5);
-                clonal_population.get(i).value[j] = 
-                    clonal_population.get(i).value[j] + alpha;
-                    //* (clonal_population.get(i).Ag.value[j] - 
-                    //  clonal_population.get(i).value[j]);
-            }
+        for(Antibody ab: clonal_population){
+            ab.randomize(ab.Affinity);
         }
 
         //After affinity maturation recalculate the affinity of clonal
         //population and the class it belongs to
-        Antibody ab;
-        Antigen ag;
-        for(int j=0;j<clonal_population.size();j++){
+        for(Antibody ab: clonal_population){
             //Cell: findClosest(List<Cell>) return Cell
-            for(int i=0;i<Training_AgScale;i++){
-                ab=clonal_population.get(j);
-                ag=Training_Ag[i];
+            for(Antigen ag : Training_Ag) { 
                 if(ab!=null&&ag!=null){
-                    if(i==0|| (ab.Affinity < ag.getAffinity(ab))) {
+                    if(ab.Affinity < ag.getAffinity(ab)) {
                         ab.Affinity=ag.getAffinity(ab);
                         ab.classification=ag.classification;
                         ab.Ag=ag;
@@ -637,7 +637,7 @@ public class AINet {
     }
 
     //Remove those clones whose affinity is less than the natural threshold
-    public static void Metadynamics(ArrayList<Antibody> clonal_population){
+    public static void Metadynamics(List<Antibody> clonal_population){
 
         ListIterator<Antibody> iter=clonal_population.listIterator();
         Antibody ab;
@@ -656,7 +656,7 @@ public class AINet {
     //Remove those clones whose affinity with each other is less than the 
     //supression threshold
     public static void Clonal_Supression(
-            ArrayList<Antibody> clonal_population){
+            List<Antibody> clonal_population){
         
         String msg;
         msg=String.format("Clonal_Pop = %d.", clonal_population.size());
@@ -690,18 +690,15 @@ public class AINet {
     //*FIXME* Just add AbBase to the final_clonal_population, we don't need a
     // new list here
     public static void Network_Reconstruction(
-            ArrayList<Antibody> Reconstructed_Antibody_Pool,
-            ArrayList<Antibody> final_clonal_population,
-            Antibody[] AbBase){
+            List<Antibody> Reconstructed_Antibody_Pool,
+            List<Antibody> final_clonal_population, List<Antibody> AbBase){
 
         String msg;
         msg=String.format("Ab pool size start: %d.", 
             Reconstructed_Antibody_Pool.size());
         log.finer(msg);
 
-        for(int i = 0;i<BaseScale;i++){
-            Reconstructed_Antibody_Pool.add(AbBase[i]);
-        }
+        Reconstructed_Antibody_Pool.addAll(AbBase);
         Reconstructed_Antibody_Pool.addAll(final_clonal_population);
 
         msg=String.format("Ab pool size end: %d.", 
@@ -712,7 +709,7 @@ public class AINet {
     //network supression
     // *FIXME* This is identical to Clonal_Supression
     public static void Network_Interaction_Supression(
-            ArrayList<Antibody> Reconstructed_Antibody_Pool) {
+            List<Antibody> Reconstructed_Antibody_Pool) {
 
         String msg;
         msg=String.format("Ab pool size start: %d.", 
@@ -747,28 +744,24 @@ public class AINet {
 
 
     //Introduce diversity to continue the while loop
-    public void Introduce_Diversity(ArrayList<Antibody> 
-            final_Ab_Pool,Antigen[] Training_Ag){
+    public void Introduce_Diversity(List<Antibody> final_Ab_Pool,
+           List<Antigen> Training_Ag){
 
-        Random rand  = new Random();
         Antibody ab;
         for(int i = 0;i<diversityCount;i++) {
             ab = new Antibody();
-            for (int j = 0; j < Dimensions; j++) {
-               ab.setValue(j,MaxValue * rand.nextDouble());
-            }
+            ab.randomize();
             final_Ab_Pool.add(ab);
         }
 
 
-        Antigen ag;
         for (Antibody ab1: final_Ab_Pool) {
             if (ab1==null) continue;
-            for (int i=0;i<Training_AgScale;i++) {
-                ag=Training_Ag[i];
-                //*FIXME* findClosest()
+            
+            //*FIXME* findClosest()
+            for (Antigen ag : Training_Ag){
                 if (ag==null) continue;
-                if(i==0|| (ab1.Affinity < ag.getAffinity(ab1))){
+                if(ab1.Affinity < ag.getAffinity(ab1)){
                     ab1.Affinity = ag.getAffinity(ab1);
                     ab1.classification= ag.classification;
                     ab1.Ag=ag;
@@ -778,11 +771,9 @@ public class AINet {
     }
 
     //Load the training set from a file and return it
-    public static Antigen[] get_training_set(File corpus_file){
-        Antigen Training_Ag[];
-        ArrayList<Antigen> temp_training_ag = new ArrayList<Antigen>();
+    public static List<Antigen> get_training_set(File corpus_file){
+        List<Antigen> Training_Ag = new ArrayList<Antigen>();
         String line_in=null;
-        int Training_AgScale;
         String msg;
         
         // Read the training data file
@@ -795,7 +786,7 @@ public class AINet {
                     log.fine("Blank line in input file skipped");
                     continue;
                 }
-                temp_training_ag.add(Antigen.valueOf(line_in));
+                Training_Ag.add(Antigen.valueOf(line_in));
             }
         }
         catch (FileNotFoundException e){
@@ -817,14 +808,11 @@ public class AINet {
             System.exit(1);
         }
 
-        //*FIXME* These should all be using Lists 
-        Training_AgScale=temp_training_ag.size();
-        Training_Ag=temp_training_ag.toArray(
-            new Antigen[Training_AgScale]);
-
         System.out.println("Dumping training set:");
-        for(int i=0; i < Training_AgScale; i++){
-            msg=String.format("[%d]: %s", i, Training_Ag[i]);
+        int i=0;
+        for(Antigen ag: Training_Ag){
+            i++;
+            msg=String.format("[%d]: %s", i, ag);
             log.fine(msg);
         }
         return Training_Ag;
@@ -832,39 +820,35 @@ public class AINet {
 
 
 
-    public void setupAINet(List<Antigen> Whole_Ag, Antigen Training_Ag[]){
+    public void setupAINet(List<Antigen> Whole_Ag, List<Antigen> Training_Ag){
 
         String msg;
-        Antibody ab;
-        Antigen ag;
 
         List<Antibody> Initial_Ab=new ArrayList<Antibody>(Initial_AbScale);
-        Antibody AbBase[]=new Antibody[BaseScale];
-        ArrayList<Antibody> Reconstructed_Antibody_Pool = 
+        List<Antibody> AbBase=new ArrayList<Antibody>(BaseScale);
+        List<Antibody> Reconstructed_Antibody_Pool = 
             new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
-        ArrayList<Antibody> clonal_population = 
+        List<Antibody> clonal_population = 
             new ArrayList<Antibody>(Clonal_BaseScale);
 
         //randomly generate all the antibodies
-        Random random=new Random();
 
+        Antibody temp_ab;
         for(int i=0;i<Initial_AbScale;i++){ 
-            Initial_Ab.add(new Antibody());
-            for(int j=0;j<Dimensions;j++){
-                Initial_Ab[i].setValue(j,random.nextDouble()*MaxValue);
-            }
+            temp_ab=new Antibody();
+            temp_ab.randomize();
+            Initial_Ab.add(temp_ab);
         }
 
+        // *FIXME* There should be a general 'Classify' method
         //For each antibody find the highest affinity with any antigen and the
         //class it belongs to
-        for(int j=0;j<Initial_Ab.length;j++){
-            ab=Initial_Ab[j];
+        for(Antibody ab: Initial_Ab){
             if (ab == null) continue;
-            for(int i=0;i<Training_Ag.length;i++){
-                ag=Training_Ag[i];
+            for(Antigen ag : Training_Ag){
                 if (ag == null) continue;
                 // findClosest()
-                if(i==0||(ab.Affinity<ag.getAffinity(ab))) {
+                if(ab.Affinity<ag.getAffinity(ab)) {
                     ab.Affinity = ag.getAffinity(ab);
                     ab.classification=ag.classification;
                     ab.Ag=ag;
@@ -873,14 +857,14 @@ public class AINet {
         }
 
         //Take the top 'AbScale' number of antibodies with highest affinity
-        for(int i=0;i<AbBase.length;i++) {
-            AbBase[i]=new Antibody(Initial_Ab[i]);
+        for(int i=0;i < BaseScale && i < Initial_Ab.size();i++) {
+            AbBase.add(new Antibody(Initial_Ab.get(i)));
         }
         // *FIXME* 
         // Is this supposed to be bubble sort?
         // findClosest()
        
-        Antibody highest;
+        Antibody highest=null;
         Antibody base_ab;
         ListIterator<Antibody> iter=AbBase.listIterator();
         while(iter.hasNext()) { 
@@ -891,7 +875,8 @@ public class AINet {
                     highest = init_ab;
                 }
             }
-            highest.Affinity=0;
+            if (highest != null) 
+                highest.Affinity=0;
         }
 
         int iter_count = 0;
@@ -905,7 +890,7 @@ public class AINet {
             log.fine("Size after clonal_expansion " +
                 clonal_population.size());
 
-            Affinity_Maturation(clonal_population,AbBase,Training_Ag);
+            Affinity_Maturation(clonal_population,Training_Ag);
             log.fine("Size after Affinity maturation " +
                 clonal_population.size());
 
@@ -981,7 +966,7 @@ public class AINet {
         log.info(msg);
 
         for(int i=0;i<BaseScale;i++) {
-            System.out.println(AbBase[i]);
+            System.out.println(AbBase.get(i));
         }
             
         //  System.out.println("Whole Affinity = "
@@ -989,15 +974,20 @@ public class AINet {
         //  System.out.println("Total number of iterations = "+iter_count);
         //}//end of runainet
 
-        ab = new Antibody();
+        /* 
+         * This Classifies Whole_Ag. 
+         *
+         * *FIXME* 
+         * The interior loop should be simplified into a single method call
+         *
+         */
         for(int i=0;i<Whole_Ag.size();i++) {
-            //*FIXME* Why are we using AbBase[1] here?
-            ab=new Antibody(AbBase[1]);
-            for(int j=1;j<AbBase.length;j++) {
-                if(Whole_Ag.get(i).getAffinity(AbBase[j])>
-                        Whole_Ag.get(i).getAffinity(ab)){
-                    Whole_Ag.get(i).classification=AbBase[j].classification;
-                    ab=new Antibody(AbBase[j]);
+            temp_ab=new Antibody(AbBase.get(0));
+            for(int j=1;j<AbBase.size();j++) {
+                if(Whole_Ag.get(i).getAffinity(AbBase.get(j))>
+                        Whole_Ag.get(i).getAffinity(temp_ab)){
+                    Whole_Ag.get(i).classification=AbBase.get(j).classification;
+                    temp_ab=new Antibody(AbBase.get(j));
                 }
             }
         }
@@ -1062,13 +1052,12 @@ public class AINet {
 
         Whole_Ag=inputData;
 
-        Antigen[] Training_Ag=get_training_set(corpus_file);
+        List<Antigen> Training_Ag=get_training_set(corpus_file);
         //*FIXME* We should be checking this when we use it, not relying on a
         //global
-        Training_AgScale=Training_Ag.length;
         System.out.println("Antibodies:");
-        for(int n=0; n < Training_Ag.length; n++){
-            msg=String.format("%s", Training_Ag[n]);
+        for(Antigen ag: Training_Ag){
+            msg=String.format("%s", ag);
             log.info(msg);
         }
         setupAINet(Whole_Ag,Training_Ag);
