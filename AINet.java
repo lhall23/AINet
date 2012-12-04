@@ -590,10 +590,15 @@ public class AINet {
     public void Affinity_Maturation(ArrayList<Antibody> clonal_population,
             Antibody[] AbBase,Antigen[] Training_Ag){
 
+        Random rand = new Random();
         int total_clone_count = clonal_population.size();
+        double alpha;
         for(int i = 0;i < total_clone_count;i++){
-            float alpha = (float)(1/clonal_population.get(i).Affinity);
             for(int j = 0;j<Dimensions;j++){
+                //Select a random number between +/-Affinity to add to each 
+                //value
+                alpha=2 * clonal_population.get(i).Affinity *
+                    (rand.nextDouble() - 0.5);
                 clonal_population.get(i).value[j] = 
                     clonal_population.get(i).value[j] + alpha;
                     //* (clonal_population.get(i).Ag.value[j] - 
