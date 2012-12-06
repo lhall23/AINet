@@ -641,15 +641,11 @@ public class AINet {
         ListIterator<Antibody> iter=clonal_population.listIterator();
         double distance_threshold = metadynamics_threshold * 
             Math.sqrt(Dimensions) * MaxValue;
-        System.out.println("Distance_thresh: " + distance_threshold);
         Antibody ab;
         while (iter.hasNext()){
             ab=iter.next();
             if ((1/ab.Affinity) > distance_threshold ){
-                log.fine("Removing Antibody at distance :" + (1/ab.Affinity));
                 iter.remove();
-            } else {
-                log.fine("Keeping Antibody at distance :" + (1/ab.Affinity));
             }
         }
     }
