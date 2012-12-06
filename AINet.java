@@ -267,7 +267,6 @@ public class AINet {
         }
         
 	    AINet ais = new AINet(inputData,corpus_file);  	
-        log.info("Classification results: ");
         if (output_file != null){  
             try {
                 BufferedWriter writer=
@@ -285,7 +284,10 @@ public class AINet {
                 System.exit(1);
             }
 
-        } else {
+        } 
+        
+        if (log.isLoggable(Level.FINE)){
+            log.fine("Classification results: ");
             for (Antigen ag: ais.Whole_Ag){
                 System.out.println(ag.toString());
             }
@@ -560,27 +562,6 @@ public class AINet {
         }
     }
 
-    // Find the percentage of Ag[] which is classified the same as the closest
-    // element of Ab[]
-    //Used to find the overall correctness
-    public static double Whole_Affinity(Antibody []Ab,Antigen []Ag){
-        log.warning("Whole_Affinity(Antibody[], Antigen[]) is deprecated");
-        int correct=0;
-        Antibody ab = null;
-        for(int i=0;i<Ag.length;i++){
-            //Antigen: findClosest(List<Antibody>) return Antibody
-            for(int j=0;j<BaseScale;j++){
-                if(j==0||(Ag[i].getAffinity(ab)<Ag[i].getAffinity(Ab[j]))){
-                    ab=Ab[j];
-                }
-            }
-            if(Ag[i].classification==ab.classification){
-                correct++;
-            }
-        }
-        return correct/(double)Ag.length;
-    }
-
     // Find the percentage of ag_list<Antigen> which is classified the same as
     // the closest element of ab_list<Antibody>. 
     // Used to find the overall correctness
@@ -590,14 +571,7 @@ public class AINet {
         int correct=0;
         Antibody closest_ab; 
         for(Antigen ag : ag_list){
-            closest_ab = null;
-            //Antigen: findClosest(List<Antibody>) return Antibody
-            for(Antibody ab : ab_list){
-                if(closest_ab == null ||
-                        (ag.getAffinity(ab)<ag.getAffinity(closest_ab))){
-                    closest_ab=ab;
-                }
-            }
+            closest_ab = (Antibody) ag.findClosest(ab_list);
             if(ag.classification==closest_ab.classification){
                 correct++;
             }
@@ -687,13 +661,13 @@ public class AINet {
      * concatenate the antibody base with the final clonal population
      */
     public static void Network_Reconstruction(
-            List<Antibody> clonal_population){
+            List<Antibody> clonal_population, List<Antibody> AbBase){
 
         String msg;
         msg=String.format("Ab pool size start: %d.", clonal_population.size());
         log.finer(msg);
 
-        final_clonal_population.addAll(AbBase);
+        clonal_population.addAll(AbBase);
 
         msg=String.format("Ab pool size end: %d.", clonal_population.size());
         log.finer(msg);
@@ -749,12 +723,14 @@ public class AINet {
             System.exit(1);
         }
 
-        System.out.println("Dumping training set:");
-        int i=0;
-        for(Antigen ag: Training_Ag){
-            i++;
-            msg=String.format("[%d]: %s", i, ag);
-            log.fine(msg);
+        if (log.isLoggable(Level.FINE)){ 
+            System.out.println("Dumping training set:");
+            int i=0;
+            for(Antigen ag: Training_Ag){
+                i++;
+                msg=String.format("[%d]: %s", i, ag);
+                log.fine(msg);
+            }
         }
         return Training_Ag;
     }
@@ -833,15 +809,10 @@ public class AINet {
             log.fine("Size after Diversity " +
                 Reconstructed_Antibody_Pool.size());
 
-            //Find the top 'baseScale' antibodies from the final
-            //reconstructed antibody pool and repeate the loop
-
-            int c=0;
-
             //Replace AbBase the #BaseScale best elements of clonal_population
             AbBase.clear();
             Collections.sort(clonal_population, Collections.reverseOrder());
-            AbBase.add(clonal_population.subList(
+            AbBase.addAll(clonal_population.subList(
                 BaseScale,clonal_population.size()));
            
             correctness_current_iteration = 
@@ -853,8 +824,11 @@ public class AINet {
         msg=String.format("Exited while loop (%d iterations).", iter_count);
         log.info(msg);
 
-        for(int i=0;i<BaseScale;i++) {
-            System.out.println(AbBase.get(i));
+        if (log.isLoggable(Level.FINE)){ 
+            System.out.println("Antibodies:");
+            for(int i=0;i<BaseScale;i++) {
+                System.out.println(AbBase.get(i));
+            }
         }
             
         //  System.out.println("Whole Affinity = "
@@ -942,10 +916,12 @@ public class AINet {
         Whole_Ag=inputData;
         Training_Ag=get_training_set(corpus_file);
 
-        System.out.println("Antibodies:");
-        for(Antigen ag: Training_Ag){
-            msg=String.format("%s", ag);
-            log.info(msg);
+        if (log.isLoggable(Level.FINE)){ 
+            System.out.println("Antibodies:");
+            for(Antigen ag: Training_Ag){
+                msg=String.format("%s", ag);
+                System.out.println(msg);
+            }
         }
 
         setupAINet();

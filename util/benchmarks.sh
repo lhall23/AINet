@@ -28,7 +28,7 @@ while getopts "tdh" OPT; do
         t)
             echo "Test run. Reporting disabled, debugging enabled."
             SAVE=false;
-            DEBUG="-D";
+            TRIALS=1;
             ;;
         d)
             echo "Debugging enabled."
