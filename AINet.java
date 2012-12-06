@@ -50,9 +50,6 @@ public class AINet {
     private static int diversityCount=BaseScale*3;
 
 
-    // *FIXME* Not a global. This goes away with refactoring
-    private static File input_file;
-
     // *FIXME* This should be automatically detected, and should probably be
     // made up of a pair of arrays, Min[Dimension], Max[Dimension], so that we
     // don't go wandering around in a larger space than necessary
@@ -75,7 +72,6 @@ public class AINet {
 
     private List<Antigen> Whole_Ag;
     private List<Antigen> Training_Ag;
-    Dimension imageInDimension;
     int TRGB[][][];
 
 
@@ -83,6 +79,7 @@ public class AINet {
         String optarg_s="";
         File corpus_file=null;
         File output_file=null;
+        File input_file=null;
         String msg="";
         final String help = "Usage: \n\t-h (help)\n" +
             "\t-t FILENAME \tTraining set\n" +
@@ -272,6 +269,12 @@ public class AINet {
             }
         }
 	}
+   
+    /* 
+     * Read input data file
+     *
+     */
+     
     public static List<Antigen> get_data_set(File input_file){
         BufferedReader reader;
         List<Antigen> inputData = new ArrayList<Antigen>();
@@ -309,7 +312,65 @@ public class AINet {
         }
         return inputData;
     }
+
+    /* 
+     * Load the training set from a file and return it
+     *
+     */
+    public static List<Antigen> get_training_set(File corpus_file){
+        List<Antigen> Training_Ag = new ArrayList<Antigen>();
+        String line_in=null;
+        String msg;
         
+        // Read the training data file
+
+        try{
+            BufferedReader reader = 
+                new BufferedReader(new FileReader(corpus_file));
+            while((line_in=reader.readLine()) != null){
+                if (line_in.equals("")){
+                    log.fine("Blank line in input file skipped");
+                    continue;
+                }
+                Training_Ag.add(Antigen.valueOf(line_in));
+            }
+        }
+        catch (FileNotFoundException e){
+            msg=String.format("Failed to open data file %s", 
+                corpus_file.getName());
+            System.out.println(msg);
+            System.exit(1);
+        }
+        catch (IOException e){
+            msg=String.format("Error %s reading file %s", 
+                e, corpus_file.getName());
+            System.out.println(msg);
+            System.exit(1);
+        }
+        catch (ParseException e){
+            msg=String.format("Error %s reading file %s", 
+                e, corpus_file.getName());
+            System.out.println(msg);
+            System.exit(1);
+        }
+
+        if (log.isLoggable(Level.FINE)){ 
+            System.out.println("Dumping training set:");
+            int i=0;
+            for(Antigen ag: Training_Ag){
+                i++;
+                msg=String.format("[%d]: %s", i, ag);
+                log.fine(msg);
+            }
+        }
+        return Training_Ag;
+    }
+        
+
+    /* 
+     * Initialize logging system
+     *
+     */
 
     private static void log_init(){
         if (log!=null){
@@ -334,12 +395,23 @@ public class AINet {
         return;
     }
 
+    /*
+     * Logging formatter so that console messages don't have so much 
+     * decoration as to be unreadable
+     *
+     */
     private static class ReadableFormatter extends SimpleFormatter{
         public String format(LogRecord record){
             return String.format("<%s.%s>: %s\n", record.getSourceClassName(), 
                 record.getSourceMethodName(), record.getMessage());
         }
     }
+
+
+    /*
+     * Parent class for Antigen and Antibodies
+     *
+     */
 
     public static abstract class Cell {
         protected static final int DEFAULT_CLASS=0;
@@ -373,17 +445,17 @@ public class AINet {
         }
 
         public void randomize(){
-           this.randomize(1.0); 
+           this.randomize(MaxValue); 
         }
 
-        // Set each element of the vector to a random value between 
-        // +/- mutation/2. A value of 1.0 (as is the default), should have an
+        // Set each element of the vector to a random value between +/-
+        // mutation/2. A value of MaxValue (as is the default), should have an
         // equal chance of choosing every element between 0 and MaxValue if we
         // start at MaxValue/2
         public void randomize(double mutation){
             double delta;
             for(int i=0;i<Dimensions;i++){
-                delta=(rand.nextDouble() - .5) * mutation* MaxValue ; 
+                delta=(rand.nextDouble() - .5) * mutation ; 
                 this.value[i]+=delta;
             }
         }
@@ -584,7 +656,7 @@ public class AINet {
     // the closest element of ab_list<Antibody>. 
     // Used to find the overall correctness
     // This replaces the old array based version
-    public static double Whole_Affinity(List<Antibody> ab_list,
+    public double Whole_Affinity(List<Antibody> ab_list,
             List<Antigen> ag_list){
         int correct=0;
         Antibody closest_ab; 
@@ -627,7 +699,7 @@ public class AINet {
     public void Affinity_Maturation(List<Antibody> clonal_population){
 
         for(Antibody ab: clonal_population){
-            ab.randomize(ab.Affinity);
+            ab.randomize(1/ab.Affinity);
             ab.classify(Training_Ag);
         }
     }
@@ -641,15 +713,11 @@ public class AINet {
         ListIterator<Antibody> iter=clonal_population.listIterator();
         double distance_threshold = metadynamics_threshold * 
             Math.sqrt(Dimensions) * MaxValue;
-        System.out.println("Distance_thresh: " + distance_threshold);
         Antibody ab;
         while (iter.hasNext()){
             ab=iter.next();
             if ((1/ab.Affinity) > distance_threshold ){
-                log.fine("Removing Antibody at distance :" + (1/ab.Affinity));
                 iter.remove();
-            } else {
-                log.fine("Keeping Antibody at distance :" + (1/ab.Affinity));
             }
         }
     }
@@ -657,7 +725,7 @@ public class AINet {
     /* Remove those clones whose affinity with each other is less than the
      * supression threshold
      */
-    public static void Clonal_Supression(List<Antibody> clonal_population){
+    public void Clonal_Supression(List<Antibody> clonal_population){
         
         String msg;
         msg=String.format("Clonal_Pop = %d.", clonal_population.size());
@@ -686,7 +754,7 @@ public class AINet {
     /* 
      * concatenate the antibody base with the final clonal population
      */
-    public static void Network_Reconstruction(
+    public void Network_Reconstruction(
             List<Antibody> clonal_population, List<Antibody> AbBase){
 
         String msg;
@@ -711,55 +779,6 @@ public class AINet {
         }
     }
 
-    //Load the training set from a file and return it
-    public static List<Antigen> get_training_set(File corpus_file){
-        List<Antigen> Training_Ag = new ArrayList<Antigen>();
-        String line_in=null;
-        String msg;
-        
-        // Read the training data file
-
-        try{
-            BufferedReader reader = 
-                new BufferedReader(new FileReader(corpus_file));
-            while((line_in=reader.readLine()) != null){
-                if (line_in.equals("")){
-                    log.fine("Blank line in input file skipped");
-                    continue;
-                }
-                Training_Ag.add(Antigen.valueOf(line_in));
-            }
-        }
-        catch (FileNotFoundException e){
-            msg=String.format("Failed to open data file %s", 
-                input_file.getName());
-            System.out.println(msg);
-            System.exit(1);
-        }
-        catch (IOException e){
-            msg=String.format("Error %s reading file %s", 
-                e, input_file.getName());
-            System.out.println(msg);
-            System.exit(1);
-        }
-        catch (ParseException e){
-            msg=String.format("Error %s reading file %s", 
-                e, input_file.getName());
-            System.out.println(msg);
-            System.exit(1);
-        }
-
-        if (log.isLoggable(Level.FINE)){ 
-            System.out.println("Dumping training set:");
-            int i=0;
-            for(Antigen ag: Training_Ag){
-                i++;
-                msg=String.format("[%d]: %s", i, ag);
-                log.fine(msg);
-            }
-        }
-        return Training_Ag;
-    }
 
 
 
@@ -835,8 +854,7 @@ public class AINet {
             //Replace AbBase the #BaseScale best elements of clonal_population
             AbBase.clear();
             Collections.sort(clonal_population, Collections.reverseOrder());
-            AbBase.addAll(clonal_population.subList(
-                BaseScale,clonal_population.size()));
+            AbBase.addAll(clonal_population.subList(0, BaseScale));
            
             correctness_current_iteration = 
                 Whole_Affinity(AbBase,Training_Ag);
@@ -849,8 +867,8 @@ public class AINet {
 
         if (log.isLoggable(Level.FINE)){ 
             System.out.println("Antibodies:");
-            for(int i=0;i<BaseScale;i++) {
-                System.out.println(AbBase.get(i));
+            for(Antibody ab : AbBase){
+                System.out.println(ab);
             }
         }
             
@@ -929,6 +947,9 @@ public class AINet {
         Training_Ag=training_set;
         BaseScale=(int) (Training_Ag.size() * target_compression);
         diversityCount=(int) (BaseScale/percent_retained) - BaseScale;
+        log.info("BaseScale (Target number of Antibodies): " + BaseScale);
+        log.info("DiversityCount (Antibodies generated before pruning): " + 
+            diversityCount);
 
         if (log.isLoggable(Level.FINE)){ 
             System.out.println("Antibodies:");

@@ -5,8 +5,8 @@
 # This file should contain already classified data. We'll assume it has 4 tab
 # separated columns for the moment.
 INPUT_FILE=$1
-OUTPUT_TRAIN=temp_train.txt
-OUTPUT_DATA=temp_data.txt
+OUTPUT_TRAIN=train.txt
+OUTPUT_DATA=test_data.txt
 
 #Size of training set as a fraction of the size of the existing data
 SIZE=10

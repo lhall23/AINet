@@ -19,11 +19,13 @@ function usage(){
     echo -en "Usage:\n"
     echo -en "\t-t:\tTest mode (Don't save output, enable debugging)\n"
     echo -en "\t-d:\tEnable debugging\n"
+    echo -en "\t-c COMPRESSION:\tCompression rate\n"
+    echo -en "\t-T TRIALS:\tNumber of trials\n"
     echo -en "\t-h:\tPrint this message\n"
 }
 
 # Get options 
-while getopts "tdh" OPT; do
+while getopts "tdhc:T:" OPT; do
     case $OPT in
         t)
             echo "Test run. Reporting disabled, debugging enabled."
@@ -38,6 +40,12 @@ while getopts "tdh" OPT; do
             usage;
             exit 0;
             ;;
+        c)
+            COMPRESSION=$OPTARG
+            ;;
+        T)
+            TRIALS=$OPTARG
+            ;;
         *)
             echo "Option not recognized"
             usage;
@@ -45,6 +53,8 @@ while getopts "tdh" OPT; do
             ;;
     esac
 done
+echo $@
+echo $(( $OPTIND - 1 ))
 shift $(( $OPTIND - 1 ))
 echo $@
 
@@ -119,18 +129,19 @@ for TEST in $TEST_LIST; do
     SUM=0;
     for num in $( seq $TRIALS ); do 
         start_time="$(date)"
-        java -jar -ea "$JAR_TMP" -t "${TEST}/train.txt" -f "${TEST}/test_data.txt" \
-            -o "${OUTPUT}"  -d "${DIMENSIONS}" -z "${COMPRESSION}" \
-            -i "${ITERATIONS}" "${DEBUG}" || exit 1
+        java -jar -ea "$JAR_TMP" -t "${TEST}/train.txt" \
+            -f "${TEST}/test_data.txt" -o "${OUTPUT}"  -d "${DIMENSIONS}" \
+            -z "${COMPRESSION}" -i "${ITERATIONS}" "${DEBUG}" || exit 1
         end_time="$(date)"
         INCORRECT="$( ./util/compare.sh "$OUTPUT" "${TEST}/classified.txt" | 
             wc -l )"
-        [ "x${SAVE}x"=="xtruex" ] && 
+        [ "x${SAVE}x" == "xtruex" ] && {
             echo "INSERT INTO test(source_id,benchmark_id,runtime,compression,
                 iterations,wrong) VALUES
             ($SOURCE_ID,$BENCHMARK_ID,
                 '$end_time'::timestamp - '$start_time'::timestamp,$COMPRESSION,
                 $ITERATIONS,$INCORRECT);" | psql -q -d ais
+        }
         CORRECT="$(( $TOTAL - $INCORRECT ))"
         PERCENT="$(echo "scale=2;$CORRECT / $TOTAL" | bc -l )"
         { 
