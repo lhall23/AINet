@@ -9,7 +9,7 @@ GIT_HASH="$(git log -n1 --format=%H HEAD)"
 GIT_DATE="$(git log -n1 --format=%aD HEAD)"
 
 OUTPUT="$(mktemp)"
-SCALE=50
+COMPRESSION=".2"
 ITERATIONS=50
 TRIALS=5
 
@@ -86,19 +86,21 @@ make AINet.jar
 mv AINet.jar "$JAR_TMP"
 
 #SELECT OR INSERT record for current software revision.
-SOURCE_ID="$(
-    echo "SELECT source_id FROM source WHERE git_hash='$GIT_HASH'" |
-        psql -t -d ais | tr -d [:space:])"
-[ -z "$SOURCE_ID" ] && {
+[ "x${SAVE}x" == "xtruex" ] && {
     SOURCE_ID="$(
-        echo "INSERT INTO source(date,git_hash) 
-                VALUES ('$GIT_DATE','$GIT_HASH') RETURNING source_id;" | 
-            psql -q -t -d ais | tr -d [:space:])";
+        echo "SELECT source_id FROM source WHERE git_hash='$GIT_HASH'" |
+            psql -t -d ais | tr -d [:space:])"
+    [ -z "$SOURCE_ID" ] && {
+        SOURCE_ID="$(
+            echo "INSERT INTO source(date,git_hash) 
+                    VALUES ('$GIT_DATE','$GIT_HASH') RETURNING source_id;" | 
+                psql -q -t -d ais | tr -d [:space:])";
+    }
 }
     
 
 #Setup file logging.
-echo -en "${CURRENT}\nScale: ${SCALE}\tIterations: ${ITERATIONS}\n" | 
+echo -en "${CURRENT}\nCompression: ${COMPRESSION}\tIterations: ${ITERATIONS}\n" | 
     tee -a "${BENCH_DIR}/results.txt"
 
 for TEST in $TEST_LIST; do
@@ -111,22 +113,23 @@ for TEST in $TEST_LIST; do
     BENCHMARK_ID="$(
         echo "SELECT benchmark_id FROM benchmark WHERE name='$TEST_NAME'" |
             psql -t -d ais | tr -d [:space:])"
-    echo -en "${CURRENT}\nScale: ${SCALE}\tIterations: ${ITERATIONS}\n" | 
+    echo -en "${CURRENT}\nCompression: ${COMPRESSION}\tIterations: ${ITERATIONS}\n" | 
         tee -a "${TEST}/test_results.txt"
 
     SUM=0;
     for num in $( seq $TRIALS ); do 
         start_time="$(date)"
         java -jar -ea "$JAR_TMP" -t "${TEST}/train.txt" -f "${TEST}/test_data.txt" \
-            -o "${OUTPUT}"  -d "${DIMENSIONS}" -s "${SCALE}" \
+            -o "${OUTPUT}"  -d "${DIMENSIONS}" -z "${COMPRESSION}" \
             -i "${ITERATIONS}" "${DEBUG}" || exit 1
         end_time="$(date)"
         INCORRECT="$( ./util/compare.sh "$OUTPUT" "${TEST}/classified.txt" | 
             wc -l )"
-        [ "$SAVE"=="true" ] && echo "INSERT INTO test(source_id,benchmark_id,runtime,scale,
+        [ "x${SAVE}x"=="xtruex" ] && 
+            echo "INSERT INTO test(source_id,benchmark_id,runtime,compression,
                 iterations,wrong) VALUES
             ($SOURCE_ID,$BENCHMARK_ID,
-                '$end_time'::timestamp - '$start_time'::timestamp,$SCALE,
+                '$end_time'::timestamp - '$start_time'::timestamp,$COMPRESSION,
                 $ITERATIONS,$INCORRECT);" | psql -q -d ais
         CORRECT="$(( $TOTAL - $INCORRECT ))"
         PERCENT="$(echo "scale=2;$CORRECT / $TOTAL" | bc -l )"

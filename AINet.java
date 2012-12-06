@@ -48,7 +48,6 @@ public class AINet {
     private static int BaseScale = DEFAULT_POPULATION_SIZE;
     //Control values for the breeding steps
     private static int diversityCount=BaseScale*3;
-    private static int Clonal_BaseScale=BaseScale*3;
 
 
     // *FIXME* Not a global. This goes away with refactoring
@@ -56,11 +55,19 @@ public class AINet {
 
     // *FIXME* This should be automatically detected, and should probably be
     // made up of a pair of arrays, Min[Dimension], Max[Dimension], so that we
-    // don't go wandering around in too big of an area. 
+    // don't go wandering around in a larger space than necessary
     private static int MaxValue=255;
 
+    // \sigma_s -- supression_threshold
     private static double supression_threshold = 0.09;
+    // \sigma_d -- natural death threshold 
     private static double metadynamics_threshold = 0.7;
+    // \zeta -- percentage of mature antibodies to be kept
+    private static double percent_retained = 0.2;
+    // Target number of antibodies as a percentage of the size of the training
+    // set
+    private static double target_compression = 0.2;
+    
 
     /*
      * New Class vars
@@ -87,6 +94,9 @@ public class AINet {
             "\t-d DIMENSIONS \tNumber of dimensions in data set\n" +
             "\t-a APOPTOSIS \tMaximum distance threshold\n" + 
             "\t-S SUPPRESSION \tMaximum similarity threshold\n" +
+            "\t-z ZETA \tPercentage of mature antibodies to keep\n" +
+            "\t-c COMPRESSION \tClonal Population, " +
+                "as a percentage of the training set\n" +
             "\t-D          \tDEBUG\n";
 
                 // Parse arguments... where's my beloved optarg?!
@@ -102,6 +112,11 @@ public class AINet {
             //Parse arguments that don't take options 
             switch(opt){
                 case 'h':
+                    System.out.print(help);
+                    System.exit(1);
+                case 's':
+                    msg="The scale argument is deprecated. Please use -z.";
+                    System.out.println(msg);
                     System.out.print(help);
                     System.exit(1);
                 case 'D':
@@ -161,14 +176,6 @@ public class AINet {
                     log.info(msg);
                     output_file=new File(optarg_s); 
                     break;
-                case 's':
-                    msg=String.format(
-                        "Setting scale to \"%s\".", optarg_s);
-                    log.info(msg);
-                    BaseScale=Integer.valueOf(optarg_s); 
-                    diversityCount=BaseScale*3;
-                    Clonal_BaseScale=BaseScale*3;
-                    break;
                 case 'i':
                     msg=String.format(
                         "Setting maximum iterations to \"%s\".", optarg_s);
@@ -192,6 +199,18 @@ public class AINet {
                         "Setting supression threshold to \"%s\".", optarg_s);
                     log.info(msg);
                     supression_threshold=Double.valueOf(optarg_s); 
+                    break;
+                case 'z':
+                    msg=String.format(
+                        "Setting pruning percentage to \"%s\".", optarg_s);
+                    log.info(msg);
+                    metadynamics_threshold=Double.valueOf(optarg_s); 
+                    break;
+                case 'c':
+                    msg=String.format(
+                        "Setting target compression to \"%s\".", optarg_s);
+                    log.info(msg);
+                    target_compression=Double.valueOf(optarg_s); 
                     break;
                 default:
                     System.out.print(help);
@@ -226,16 +245,39 @@ public class AINet {
         } 
 
 
-        /* 
-         * Moved from setupAINet(), which should be passed the data in an array
-         * format. Otherwise we have different codepaths for loading test data
-         * files and loading images from the interface.
-         */
+	    AINet ais = new AINet(input_file,corpus_file);  	
+        if (output_file != null){  
+            try {
+                BufferedWriter writer=
+                    new BufferedWriter(new FileWriter(output_file));
+                for (Antigen ag: ais.Whole_Ag){
+                    writer.write(ag.toString());
+                    writer.newLine();
+                }
+                writer.close();
+            }
+            catch (IOException e){
+                msg=String.format("Error %s writing classification to %s.",
+                    e, output_file.getName());
+                System.out.println(msg);
+                System.exit(1);
+            }
 
-        // Read the input data file
+        } 
+        
+        if (log.isLoggable(Level.FINE)){
+            log.fine("Classification results: ");
+            for (Antigen ag: ais.Whole_Ag){
+                System.out.println(ag.toString());
+            }
+        }
+	}
+    public static List<Antigen> get_data_set(File input_file){
         BufferedReader reader;
-        ArrayList<Antigen> inputData = new ArrayList<Antigen>();
+        List<Antigen> inputData = new ArrayList<Antigen>();
         String line_in=null;
+        String msg;
+
         try {
             reader=new BufferedReader(new FileReader(input_file));
             while((line_in=reader.readLine()) != null){
@@ -265,34 +307,9 @@ public class AINet {
             System.out.println(msg);
             System.exit(1);
         }
+        return inputData;
+    }
         
-	    AINet ais = new AINet(inputData,corpus_file);  	
-        if (output_file != null){  
-            try {
-                BufferedWriter writer=
-                    new BufferedWriter(new FileWriter(output_file));
-                for (Antigen ag: ais.Whole_Ag){
-                    writer.write(ag.toString());
-                    writer.newLine();
-                }
-                writer.close();
-            }
-            catch (IOException e){
-                msg=String.format("Error %s writing classification to %s.",
-                    e, output_file.getName());
-                System.out.println(msg);
-                System.exit(1);
-            }
-
-        } 
-        
-        if (log.isLoggable(Level.FINE)){
-            log.fine("Classification results: ");
-            for (Antigen ag: ais.Whole_Ag){
-                System.out.println(ag.toString());
-            }
-        }
-	}
 
     private static void log_init(){
         if (log!=null){
@@ -537,6 +554,7 @@ public class AINet {
             assert temp_cell instanceof Antigen:
                 "Antibodies must be classified by Antigens";
             this.Ag=(Antigen) temp_cell;
+            this.Affinity=this.getAffinity(this.Ag);
             return this.Ag;
         }
 
@@ -585,6 +603,8 @@ public class AINet {
 
         int clone_count = 0, j = 0;
 
+        // *FIXME* Figure out a reasonable way to link number of clones with
+        // the Affinity
         //Generate clones for each antibody
         for(Antibody ab : AbBase) {
             // If Affinity is high, generate 3 clones, 
@@ -616,14 +636,20 @@ public class AINet {
      * Remove those clones whose distance from the closest antigen surpasses
      * the apoptosis threshold
      */
-    public static void Metadynamics(List<Antibody> clonal_population){
+    public void Metadynamics(List<Antibody> clonal_population){
 
         ListIterator<Antibody> iter=clonal_population.listIterator();
+        double distance_threshold = metadynamics_threshold * 
+            Math.sqrt(Dimensions) * MaxValue;
+        System.out.println("Distance_thresh: " + distance_threshold);
         Antibody ab;
         while (iter.hasNext()){
             ab=iter.next();
-            if ((1/ab.Affinity) > metadynamics_threshold){
+            if ((1/ab.Affinity) > distance_threshold ){
+                log.fine("Removing Antibody at distance :" + (1/ab.Affinity));
                 iter.remove();
+            } else {
+                log.fine("Keeping Antibody at distance :" + (1/ab.Affinity));
             }
         }
     }
@@ -745,26 +771,23 @@ public class AINet {
         // Since we are not keeping a separate memory pool for each
         // classification, this really serves the same purpose as the
         // reconstructed pool.
-        List<Antibody> AbBase=new ArrayList<Antibody>(Clonal_BaseScale);
+        List<Antibody> AbBase=
+            new ArrayList<Antibody>(BaseScale + diversityCount);
 
-        List<Antibody> Reconstructed_Antibody_Pool = 
-            new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
         List<Antibody> clonal_population = 
-            new ArrayList<Antibody>(Clonal_BaseScale);
+            new ArrayList<Antibody>(BaseScale + diversityCount);
 
-
-        // generate the correct number of Antibodies
-        for(int i=0;i<Clonal_BaseScale;i++){ 
-            AbBase.add(new Antibody());
-        }
 
         //Generate a random Antibody and classify it.
-        for(Antibody ab: AbBase){
-            ab.randomize();
-            ab.classify(Training_Ag);
+        Antibody temp_ab;
+        for(int i=0;i<BaseScale + diversityCount;i++){ 
+            temp_ab=new Antibody();
+            temp_ab.randomize();
+            temp_ab.classify(Training_Ag);
+            AbBase.add(temp_ab);
         }
 
-        //Remove all but #BaseScale elements from AbBase
+        //Remove all but #BaseScale best elements from AbBase
         Collections.sort(AbBase, Collections.reverseOrder());
         AbBase.subList(BaseScale,AbBase.size()).clear();
 
@@ -793,7 +816,7 @@ public class AINet {
 
             Network_Reconstruction(clonal_population, AbBase);
             log.fine("Size after Network reconstruction " +
-                Reconstructed_Antibody_Pool.size());
+                clonal_population.size());
 
             /* 
              * *FIXME* If moving to separate memory pools, this will be needed
@@ -801,13 +824,13 @@ public class AINet {
              * classification bucket's memory pool, the latter from the entire
              * network
              */
-            //Clonal_Supression(Reconstructed_Antibody_Pool);
+            //Clonal_Supression(clonal_population);
             //log.fine("Size after Network Supression " +
-            //    Reconstructed_Antibody_Pool.size());
+            //    clonal_population.size());
 
             Introduce_Diversity(clonal_population);
             log.fine("Size after Diversity " +
-                Reconstructed_Antibody_Pool.size());
+                clonal_population.size());
 
             //Replace AbBase the #BaseScale best elements of clonal_population
             AbBase.clear();
@@ -831,28 +854,12 @@ public class AINet {
             }
         }
             
-        //  System.out.println("Whole Affinity = "
-        //      +Whole_Affinity(AbBase,Whole_Ag));
-        //  System.out.println("Total number of iterations = "+iter_count);
-        //}//end of runainet
-
         /* 
          * This Classifies Whole_Ag. 
          *
-         * *FIXME* 
-         * The interior loop should be simplified into a single method call
-         *
          */
-        Antibody temp_ab;
-        for(int i=0;i<Whole_Ag.size();i++) {
-            temp_ab=new Antibody(AbBase.get(0));
-            for(int j=1;j<AbBase.size();j++) {
-                if(Whole_Ag.get(i).getAffinity(AbBase.get(j))>
-                        Whole_Ag.get(i).getAffinity(temp_ab)){
-                    Whole_Ag.get(i).classification=AbBase.get(j).classification;
-                    temp_ab=new Antibody(AbBase.get(j));
-                }
-            }
+        for(Antigen ag : Whole_Ag) { 
+            ag.classify(AbBase);
         }
          
     }
@@ -878,7 +885,8 @@ public class AINet {
     // constructors will go away as soon as we can actually test things
     // *KILLME*
     public AINet(int[][][] TRGB) throws Exception {
-        this(TRGBto2dArray(TRGB), new File(DEFAULT_TRAINING_FILE));     
+        this(TRGBto2dArray(TRGB), 
+            get_training_set(new File(DEFAULT_TRAINING_FILE)));     
     }
 
     public static List<Antigen> TRGBto2dArray(int[][][] TRGB){
@@ -903,18 +911,24 @@ public class AINet {
         return inputData;
     }
 
-    public AINet(List<Antigen> inputData, File corpus_file){
+    public AINet(File input_file, File corpus_file){
+        this(get_data_set(input_file),get_training_set(corpus_file));
+    }
+
+    public AINet(List<Antigen> input_set, List<Antigen> training_set){
         String msg;
         //*KILLME* This makes sure that TRGB is initialized for getResults()
         //when this is the only constructor called. Since getResults should be
         //returning a flattened array anyway, the original dimensions are
         //irrelevant
-        this.TRGB=new int[4][inputData.size()][1];
+        this.TRGB=new int[4][input_set.size()][1];
 
         log_init();
 
-        Whole_Ag=inputData;
-        Training_Ag=get_training_set(corpus_file);
+        Whole_Ag=input_set;
+        Training_Ag=training_set;
+        BaseScale=(int) (Training_Ag.size() * target_compression);
+        diversityCount=(int) (BaseScale/percent_retained) - BaseScale;
 
         if (log.isLoggable(Level.FINE)){ 
             System.out.println("Antibodies:");

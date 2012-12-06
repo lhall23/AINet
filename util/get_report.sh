@@ -15,7 +15,7 @@ if [ ! -z "$1" ]; then
     git log --oneline "$COMMIT" | head -1
 fi
 echo "
-SELECT name,scale,iterations, 
+SELECT name,iterations,compression, 
         DATE_TRUNC('seconds', AVG(runtime)) AS avg_runtime, 
         DATE_TRUNC('seconds', STDDEV_POP(runtime)) AS std_dev, 
         AVG(PERCENT(wrong,data_size)) AS percent_correct, 
@@ -24,6 +24,6 @@ SELECT name,scale,iterations,
     FROM test 
     JOIN benchmark USING (benchmark_id) 
     $CONSTRAINT
-    GROUP BY iterations,scale,name
-    ORDER BY name,iterations DESC, scale;
+    GROUP BY iterations,compression,name
+    ORDER BY name,iterations DESC, compression;
 " | psql -d ais

@@ -20,4 +20,9 @@ into the Cell object), even this minimal functionality seems lost.
 	Size after Network Supression 500
 	Size after Diversity 301
 
+Thu Dec  6 01:33:14 EST 2012
 
+Target number of Antibodies is now set as a percentage of the size of the
+training set. This should give us a better comparison between the test sets.
+The values for previous tests have been calculated and inserted into the
+database.

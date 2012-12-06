@@ -42,6 +42,7 @@ CREATE TABLE test (
 	date			timestamp DEFAULT NOW(),
 	runtime			INTERVAL, 	--Runtime
 	scale			INTEGER, 	--Size of Antibody population
+	compression		FLOAT, 		--Percentage of TrainingSet (replaces scale)
 	iterations		INTEGER, 	--number of iterations to breed Antibodies
 	wrong			INTEGER 	--Incorrect classifications
 );	
