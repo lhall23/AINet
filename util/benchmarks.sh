@@ -117,7 +117,7 @@ for TEST in $TEST_LIST; do
     SUM=0;
     for num in $( seq $TRIALS ); do 
         start_time="$(date)"
-        java -jar "$JAR_TMP" -t "${TEST}/train.txt" -f "${TEST}/test_data.txt" \
+        java -jar -ea "$JAR_TMP" -t "${TEST}/train.txt" -f "${TEST}/test_data.txt" \
             -o "${OUTPUT}"  -d "${DIMENSIONS}" -s "${SCALE}" \
             -i "${ITERATIONS}" "${DEBUG}" || exit 1
         end_time="$(date)"

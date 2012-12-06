@@ -53,12 +53,26 @@ public class AINet {
     // *FIXME* Not a global. This goes away with refactoring
     private static File input_file;
 
+    private static int MaxValue=255;
+    private static final int Initial_AbScale=1000;
+    private static double supression_threshold = 0.09;
+    private static double metadynamics_threshold = 0.7;
+
+    /*
+     * New Class vars
+     */
+
+    private List<Antigen> Whole_Ag;
+    private List<Antigen> Training_Ag;
+    Dimension imageInDimension;
+    int TRGB[][][];
+
+
 	public static void main (String[] args){
         String optarg_s="";
         File corpus_file=null;
         File output_file=null;
         String msg="";
-
         final String help = "Usage: \n\t-h (help)\n" +
             "\t-t FILENAME \tTraining set\n" +
             "\t-f FILENAME \tInput file\n" +
@@ -236,13 +250,12 @@ public class AINet {
         
 	    AINet ais = new AINet(inputData,corpus_file);  	
         log.info("Classification results: ");
-        int m;
         if (output_file != null){  
             try {
                 BufferedWriter writer=
                     new BufferedWriter(new FileWriter(output_file));
-                for (m=0; m < ais.Whole_Ag.size(); m++){
-                    writer.write(ais.Whole_Ag.get(m).toString());
+                for (Antigen ag: ais.Whole_Ag){
+                    writer.write(ag.toString());
                     writer.newLine();
                 }
                 writer.close();
@@ -255,8 +268,8 @@ public class AINet {
             }
 
         } else {
-            for (m=0; m < ais.Whole_Ag.size(); m++){
-                System.out.println(ais.Whole_Ag.get(m));
+            for (Antigen ag: ais.Whole_Ag){
+                System.out.println(ag.toString());
             }
         }
 	}
@@ -290,19 +303,6 @@ public class AINet {
                 record.getSourceMethodName(), record.getMessage());
         }
     }
-
-    private static int MaxValue=255;
-    private static final int Initial_AbScale=1000;
-    private static double supression_threshold = 0.09;
-    private static double metadynamics_threshold = 0.7;
-
-    /*
-     * New Class vars
-     */
-
-    private List<Antigen> Whole_Ag;
-    Dimension imageInDimension;
-    int TRGB[][][];
 
     public static abstract class Cell {
         protected static final int DEFAULT_CLASS=0;
@@ -351,7 +351,7 @@ public class AINet {
             }
         }
 
-        public Cell findClosest(List<Cell> in_list){
+        public Cell findClosest(List<? extends Cell> in_list){
             Cell max = null;
             for (Cell cur: in_list){
                 if (max == null ||
@@ -361,7 +361,13 @@ public class AINet {
             }
             return max;
         }
-        
+
+        private Cell classify(List<? extends Cell> in_list){
+            Cell match = null;
+            match=this.findClosest(in_list);
+            this.classification=match.classification;
+            return match;
+        }
 
         public void setValue(int i, double f) {
             this.value[i]=f;
@@ -382,7 +388,7 @@ public class AINet {
                 EuclidianDistance += 
                     Math.pow(Math.abs(this.value[i] - neighbor.value[i]),2);
             }
-            return (1/Math.sqrt(EuclidianDistance));
+            return (MaxValue/Math.sqrt(EuclidianDistance));
         }
 
         //Promote an array of ints to an array of doubles
@@ -411,6 +417,13 @@ public class AINet {
 
         public void setValue(int i, double f) {
             this.value[i]=f;
+        }
+
+        public Antibody classify(List<? extends Cell> ab_list){
+            Cell temp_cell = super.classify(ab_list);
+            assert temp_cell instanceof Antibody:
+                "Antigens must be classified by Antibodies";
+            return (Antibody) temp_cell;
         }
 
         public static Antigen valueOf(String input) throws ParseException{
@@ -461,8 +474,7 @@ public class AINet {
 
         private double Affinity=0;
 
-        //*FIXME* We probably don't need to instantiate this
-        private Antigen Ag = new Antigen();
+        private Antigen Ag;
 
         public Antibody(){
             super();
@@ -498,6 +510,14 @@ public class AINet {
 
         public String toString(){
             return String.format("%s %f",super.toString(), Affinity);
+        }
+
+        public Cell classify(List<? extends Cell> ab_list){
+            Cell temp_cell = super.classify(ab_list);
+            assert temp_cell instanceof Antigen:
+                "Antibodies must be classified by Antigens";
+            this.Ag=(Antigen) temp_cell;
+            return this.Ag;
         }
 
         public static Antibody valueOf(String input) throws ParseException{
@@ -663,17 +683,20 @@ public class AINet {
         log.finer(msg);
 
         Antibody ab1=null;
-        for(ListIterator<Antibody> i = clonal_population.listIterator(); 
-                i.hasNext(); ab1 = i.next()){ 
-            if(ab1 == null) continue;
+        ListIterator<Antibody> i = clonal_population.listIterator();
+        while(i.hasNext()) { 
+            ab1 = i.next();
+            assert ab1 != null : "Unexpected null value in clonal_population";
             for(Antibody ab2: clonal_population){
-                if(ab2 == null) continue;
+                assert ab2 != null : 
+                    "Unexpected null value in clonal_population";
                 //Since the iterator gives us the same ordering both times, 
                 //this lets us avoid checking ab1(ab2) and ab2(ab1)
                 if(ab1 == ab2) break;
 
                 //If any element has an affinity less than the supression
                 //threshold, remove it and go to the next one
+                
                 if(ab1.getAffinity(ab2) <= supression_threshold){
                     i.remove();
                     break;
@@ -820,7 +843,7 @@ public class AINet {
 
 
 
-    public void setupAINet(List<Antigen> Whole_Ag, List<Antigen> Training_Ag){
+    public void setupAINet(){
 
         String msg;
 
@@ -831,29 +854,18 @@ public class AINet {
         List<Antibody> clonal_population = 
             new ArrayList<Antibody>(Clonal_BaseScale);
 
-        //randomly generate all the antibodies
 
-        Antibody temp_ab;
+        // generate the correct number of Antibodies
         for(int i=0;i<Initial_AbScale;i++){ 
-            temp_ab=new Antibody();
-            temp_ab.randomize();
-            Initial_Ab.add(temp_ab);
+            Initial_Ab.add(new Antibody());
         }
 
         // *FIXME* There should be a general 'Classify' method
         //For each antibody find the highest affinity with any antigen and the
         //class it belongs to
         for(Antibody ab: Initial_Ab){
-            if (ab == null) continue;
-            for(Antigen ag : Training_Ag){
-                if (ag == null) continue;
-                // findClosest()
-                if(ab.Affinity<ag.getAffinity(ab)) {
-                    ab.Affinity = ag.getAffinity(ab);
-                    ab.classification=ag.classification;
-                    ab.Ag=ag;
-                }
-            }
+            ab.randomize();
+            ab.classify(Training_Ag);
         }
 
         //Take the top 'AbScale' number of antibodies with highest affinity
@@ -981,6 +993,7 @@ public class AINet {
          * The interior loop should be simplified into a single method call
          *
          */
+        Antibody temp_ab;
         for(int i=0;i<Whole_Ag.size();i++) {
             temp_ab=new Antibody(AbBase.get(0));
             for(int j=1;j<AbBase.size();j++) {
@@ -1051,16 +1064,15 @@ public class AINet {
         log_init();
 
         Whole_Ag=inputData;
+        Training_Ag=get_training_set(corpus_file);
 
-        List<Antigen> Training_Ag=get_training_set(corpus_file);
-        //*FIXME* We should be checking this when we use it, not relying on a
-        //global
         System.out.println("Antibodies:");
         for(Antigen ag: Training_Ag){
             msg=String.format("%s", ag);
             log.info(msg);
         }
-        setupAINet(Whole_Ag,Training_Ag);
+
+        setupAINet();
     }
 
     public int[] getResults(){
