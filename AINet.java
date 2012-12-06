@@ -492,12 +492,16 @@ public class AINet {
         }
 
         public double getAffinity(Cell neighbor){
-            double EuclidianDistance = 0;
+            double EuclideanDistance = 0;
             for(int i=0;i<Dimensions;i++) {
-                EuclidianDistance += 
+                EuclideanDistance += 
                     Math.pow(Math.abs(this.value[i] - neighbor.value[i]),2);
             }
-            return (1/Math.sqrt(EuclidianDistance));
+            if (EuclideanDistance == 0){
+                log.info("Regenerated existing value.");
+                return 0;
+            }
+            return (1/Math.sqrt(EuclideanDistance));
         }
 
         //Promote an array of ints to an array of doubles
@@ -670,10 +674,11 @@ public class AINet {
     }
 
     //Generate clone_population
-    public void Clonal_Expansion(List<Antibody> AbBase,
-            List<Antibody> clonal_population){
+    public List<Antibody> Clonal_Expansion(List<Antibody> AbBase){
 
         int clone_count = 0, j = 0;
+        List<Antibody> clonal_population = 
+            new ArrayList<Antibody>(BaseScale + diversityCount);
 
         // *FIXME* Figure out a reasonable way to link number of clones with
         // the Affinity
@@ -690,6 +695,7 @@ public class AINet {
                 clonal_population.add(new Antibody(ab));
             }
         }
+        return clonal_population;
     }
 
     /*
@@ -793,9 +799,7 @@ public class AINet {
         List<Antibody> AbBase=
             new ArrayList<Antibody>(BaseScale + diversityCount);
 
-        List<Antibody> clonal_population = 
-            new ArrayList<Antibody>(BaseScale + diversityCount);
-
+        List<Antibody> clonal_population;
 
         //Generate a random Antibody and classify it.
         Antibody temp_ab;
@@ -817,7 +821,7 @@ public class AINet {
         while(correctness_current_iteration < 0.99 && 
                 iter_count++ <= MaxIter){
 
-            Clonal_Expansion(AbBase,clonal_population);
+            clonal_population = Clonal_Expansion(AbBase);
             log.fine("Size after clonal_expansion " +
                 clonal_population.size());
 

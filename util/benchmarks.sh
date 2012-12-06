@@ -21,11 +21,12 @@ function usage(){
     echo -en "\t-d:\tEnable debugging\n"
     echo -en "\t-c COMPRESSION:\tCompression rate\n"
     echo -en "\t-T TRIALS:\tNumber of trials\n"
+    echo -en "\t-i ITERATIONS:\tNumber of iterations\n"
     echo -en "\t-h:\tPrint this message\n"
 }
 
 # Get options 
-while getopts "tdhc:T:" OPT; do
+while getopts "tdhc:T:i:" OPT; do
     case $OPT in
         t)
             echo "Test run. Reporting disabled, debugging enabled."
@@ -35,6 +36,10 @@ while getopts "tdhc:T:" OPT; do
         d)
             echo "Debugging enabled."
             DEBUG="-D";
+            ;;
+        i)
+            ITERATIONS="$OPTARG";
+            echo "Iterations set to $ITERATIONS."
             ;;
         h)
             usage;
