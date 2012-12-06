@@ -53,8 +53,11 @@ public class AINet {
     // *FIXME* Not a global. This goes away with refactoring
     private static File input_file;
 
+    // *FIXME* This should be automatically detected, and should probably be
+    // made up of a pair of arrays, Min[Dimension], Max[Dimension], so that we
+    // don't go wandering around in too big of an area. 
     private static int MaxValue=255;
-    private static final int Initial_AbScale=1000;
+
     private static double supression_threshold = 0.09;
     private static double metadynamics_threshold = 0.7;
 
@@ -81,6 +84,8 @@ public class AINet {
             "\t-s SCALE \tScale of the clonal population to generate\n" +
             "\t-i ITERATIONS \tNumber of Iterations to train Antibodies\n" +
             "\t-d DIMENSIONS \tNumber of dimensions in data set\n" +
+            "\t-a APOPTOSIS \tMaximum distance threshold\n" + 
+            "\t-S SUPPRESSION \tMaximum similarity threshold\n" +
             "\t-D          \tDEBUG\n";
 
                 // Parse arguments... where's my beloved optarg?!
@@ -174,6 +179,18 @@ public class AINet {
                         "Setting dimensions to \"%s\".", optarg_s);
                     log.info(msg);
                     Dimensions=Integer.valueOf(optarg_s); 
+                    break;
+                case 'a':
+                    msg=String.format(
+                        "Setting apoptosis threshold to \"%s\".", optarg_s);
+                    log.info(msg);
+                    metadynamics_threshold=Double.valueOf(optarg_s); 
+                    break;
+                case 'S':
+                    msg=String.format(
+                        "Setting supression threshold to \"%s\".", optarg_s);
+                    log.info(msg);
+                    supression_threshold=Double.valueOf(optarg_s); 
                     break;
                 default:
                     System.out.print(help);
@@ -388,7 +405,7 @@ public class AINet {
                 EuclidianDistance += 
                     Math.pow(Math.abs(this.value[i] - neighbor.value[i]),2);
             }
-            return (MaxValue/Math.sqrt(EuclidianDistance));
+            return (1/Math.sqrt(EuclidianDistance));
         }
 
         //Promote an array of ints to an array of doubles
@@ -847,8 +864,8 @@ public class AINet {
 
         String msg;
 
-        List<Antibody> Initial_Ab=new ArrayList<Antibody>(Initial_AbScale);
-        List<Antibody> AbBase=new ArrayList<Antibody>(BaseScale);
+        List<Antibody> AbBase=new ArrayList<Antibody>(Clonal_BaseScale);
+
         List<Antibody> Reconstructed_Antibody_Pool = 
             new ArrayList<Antibody>(BaseScale+Clonal_BaseScale+diversityCount);
         List<Antibody> clonal_population = 
@@ -856,40 +873,20 @@ public class AINet {
 
 
         // generate the correct number of Antibodies
-        for(int i=0;i<Initial_AbScale;i++){ 
-            Initial_Ab.add(new Antibody());
+        for(int i=0;i<Clonal_BaseScale;i++){ 
+            AbBase.add(new Antibody());
         }
 
-        // *FIXME* There should be a general 'Classify' method
-        //For each antibody find the highest affinity with any antigen and the
-        //class it belongs to
-        for(Antibody ab: Initial_Ab){
+        //Generate a random Antibody and classify it.
+        for(Antibody ab: AbBase){
             ab.randomize();
             ab.classify(Training_Ag);
         }
 
-        //Take the top 'AbScale' number of antibodies with highest affinity
-        for(int i=0;i < BaseScale && i < Initial_Ab.size();i++) {
-            AbBase.add(new Antibody(Initial_Ab.get(i)));
-        }
-        // *FIXME* 
-        // Is this supposed to be bubble sort?
-        // findClosest()
-       
-        Antibody highest=null;
-        Antibody base_ab;
-        ListIterator<Antibody> iter=AbBase.listIterator();
-        while(iter.hasNext()) { 
-            base_ab=iter.next();//j
-            for(Antibody init_ab : Initial_Ab){ //i
-                if(base_ab.Affinity<init_ab.Affinity) {
-                    iter.set(new Antibody(init_ab));
-                    highest = init_ab;
-                }
-            }
-            if (highest != null) 
-                highest.Affinity=0;
-        }
+        //Remove all but #BaseScale elements from AbBase
+        //*FIXME* This needs to be sorted first, otherwise we should just not
+        //generate the extra elements
+        AbBase.subList(BaseScale,AbBase.size()).clear();
 
         int iter_count = 0;
         double correctness_current_iteration = 0.0;
