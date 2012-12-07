@@ -2,3 +2,5 @@
 *.jar
 results.txt
 test_results.txt
+*aux
+*log
