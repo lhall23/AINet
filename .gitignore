@@ -2,5 +2,9 @@
 *.jar
 results.txt
 test_results.txt
-*aux
-*log
+
+#LaTeX temp files
+*.aux
+*.log
+*.bbl
+*.blg

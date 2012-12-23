@@ -9,7 +9,7 @@ OUTPUT_TRAIN=train.txt
 OUTPUT_DATA=test_data.txt
 
 #Size of training set as a fraction of the size of the existing data
-SIZE=10
+SIZE=2
 
 [ -z $INPUT_FILE ] && {
     echo "Input file not specified.";

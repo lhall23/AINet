@@ -16,7 +16,7 @@ if [ ! -z "$1" ]; then
 fi
 echo '
 SELECT name AS "Name" ,iterations AS "Iterations",
-        ROUND(compression::NUMERIC, 2) AS "Compression", 
+        ROUND(compression::NUMERIC, 4) AS "Compression", 
         -- DATE_TRUNC('seconds', AVG(runtime)) AS avg_runtime, 
         -- DATE_TRUNC('seconds', STDDEV_POP(runtime)) AS std_dev, 
         ROUND(AVG(PERCENT(wrong,data_size))::NUMERIC * 100,2) 
