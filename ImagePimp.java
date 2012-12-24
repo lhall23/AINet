@@ -1310,47 +1310,17 @@ public class ImagePimp extends JFrame{
 
         class HoughHolder{
            int strength;
-           int sumX, sumY;
-           double meanX, meanY;
-           double sumDiffMeanX, sumDiffMeanY;
-           double stdevX, stdevY;
 
            ArrayList<Point> pointArray = new ArrayList<Point>();
 
             HoughHolder(int x, int y){
                 strength = 1;
                 pointArray.add(new Point(x, y));
-            /*    sumX = x;
-                sumY = y;
-                meanX = x;
-                meanY = y;*/
             }
 
             void insertPoint(int x, int y){
-               // if(pointArray.size() < 50){
                     strength++;
                     pointArray.add(new Point(x, y));
-           /*         sumX += x;
-                    sumY += y;
-                    meanX = sumX/pointArray.size();
-                    meanY = sumY/pointArray.size();
-                    sumDiffMeanX += (x-meanX)*(x-meanX);
-                    sumDiffMeanY += (y-meanX)*(y-meanY);
-                }
-                else{
-                    stdevX = Math.sqrt(sumDiffMeanX);
-                    stdevY = Math.sqrt(sumDiffMeanY);
-                    if(x-meanX < 2*stdevX && y-meanY < 2*stdevY){
-                        strength++;
-                        pointArray.add(new Point(x, y));
-                        sumX += x;
-                        sumY += y;
-                        meanX = sumX/pointArray.size();
-                        meanY = sumY/pointArray.size();
-                        sumDiffMeanX += (x-meanX)*(x-meanX);
-                        sumDiffMeanY += (y-meanX)*(y-meanY);
-                    }
-                }*/
             }
 
             int getStrength(){
@@ -1360,7 +1330,7 @@ public class ImagePimp extends JFrame{
             int[] getLine(){
                 double error = 2;
                 double sumX =0, sumY=0, sumXX=0, sumXY=0;
-                double n = (double)pointArray.size();
+                double n = pointArray.size();
                 double maxX = Double.MIN_VALUE, minX = Double.MAX_VALUE;
                 double maxY = 0, minY = 0;
 
@@ -1457,17 +1427,28 @@ public class ImagePimp extends JFrame{
 
     protected Image smooth(Image imageIn){
         Dimension imageInDimension = getImageDimension(imageIn);
-        int TRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
-        int altTRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
+        int TRGB[][][] = 
+            pixelArrayToTRGBArray(imageToPixelsArray(imageIn), 
+                imageInDimension);
+        int altTRGB[][][] = 
+            pixelArrayToTRGBArray(imageToPixelsArray(imageIn), 
+                imageInDimension);
         for (int colorComponent = 1; colorComponent < 4; colorComponent++)
             for (int x = 0; x < imageInDimension.getHeight(); x++)
                 for (int y = 0; y < imageInDimension.getWidth(); y++){
-                    if((x-1>0)&&(x+1<imageInDimension.getHeight())&&(y-1>0)&&(y+1<imageInDimension.getWidth()))
-                        altTRGB[colorComponent][y][x]=Math.round(((float)TRGB[colorComponent][y][x-1]+
-                                (float)TRGB[colorComponent][y][x]+(float)TRGB[colorComponent][y][x+1]+
-                                (float)TRGB[colorComponent][y+1][x]+(float)TRGB[colorComponent][y-1][x])/5f);
+                    if((x-1>0)&&(x+1<imageInDimension.getHeight())
+                            &&(y-1>0)&&(y+1<imageInDimension.getWidth())){
+                        altTRGB[colorComponent][y][x]=
+                            Math.round((TRGB[colorComponent][y][x-1]+
+                            TRGB[colorComponent][y][x]+
+                            TRGB[colorComponent][y][x+1]+
+                            TRGB[colorComponent][y+1][x]+
+                            TRGB[colorComponent][y-1][x])/5f);
+                    }
         }
-        return pixelsArrayToImage(TRGBArrayToPixelsArray(altTRGB, imageInDimension), imageInDimension);
+        return pixelsArrayToImage(
+            TRGBArrayToPixelsArray(altTRGB, imageInDimension), 
+            imageInDimension);
     }
 
     protected Image histogram(Image imageIn){
@@ -1566,33 +1547,14 @@ public class ImagePimp extends JFrame{
 	return pixelsArrayToImage(TRGBArrayToPixelsArray(TRGB, imageInDimension), imageInDimension);
     }
 
-    protected Image kMeansSegmentation(Image imageIn, int numSegments, int colors, boolean colorSource){
-        class ColorsClusterIndex{
-            private int color1, color2, color3, cluster, index;
-            public ColorsClusterIndex(int one, int two, int three, int c, int i){
-                color1 = one;
-                color2 = two;
-                color3 = three;
-                cluster = c;
-                index = i;
-            }
-            public int getC1(){ return color1; }
-            public int getC2(){ return color2; }
-            public int getC3(){ return color3; }
-            public int getCluster(){ return cluster; }
-            public ColorsClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex(){
-                return index;
-            }
-        }
+    protected Image kMeansSegmentation(Image imageIn, 
+            int numSegments, int colors, boolean colorSource){
 
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
         int pixel[] = imageToPixelsArray(imageIn);
-        ArrayList<ColorsClusterIndex>[] kArray = new ArrayList[numSegments];
+        ArrayList<ColorsClusterIndex>[] kArray = 
+            new ArrayList[numSegments];
 
         for(int i=0; i<pixel.length; i++)
         {
@@ -1922,72 +1884,44 @@ public class ImagePimp extends JFrame{
         return pixelsArrayToImage(pixel, imageInDimension);
     }
    protected Image MySuperKmeans(Image imageIn, int k){
-         class ClusterIndex{
-            private int R, G, B, cluster, index_x,index_y;
-            public ClusterIndex(int red, int Green, int Blue, int c, int x, int y){
-                R = red;
-                G = Green;
-                B = Blue;
-                cluster = c;
-                index_x = x;
-                index_y = y;
-            }
-            public int getR(){ return R; }
-            public int getG(){ return G; }
-            public int getB(){ return B; }
-            public int getCluster(){ return cluster; }
-            public ClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex_x(){
-                return index_x;
-            }
-            public int getIndex_y(){
-                return index_y;
-            }
-            public int getSum(){
-                return R + G + B;
-            }
-        }
-
         Dimension imageInDimension = getImageDimension(imageIn);
-	int TRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
+	    int TRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), 
+            imageInDimension);
         Random r = new Random();
-        int My_row  =(int)imageInDimension.getHeight();   // row number
-        int My_column =(int)imageInDimension.getWidth();  // column number
+        int My_row = (int)imageInDimension.getHeight();   // row number
+        int My_column = (int)imageInDimension.getWidth();  // column number
         ArrayList<ClusterIndex>[] kArray = new ArrayList[k];
         double[][] numberCluster = new double[k][3];
-      int[] compare = new int[k];
-       for(int row = 1; row <= (int)(My_row); row++){
-           for(int colum =1; colum<= (int)(My_column); colum++){
-                        for(int seg = 0; seg < k; seg++){
-                       if(kArray[(colum*row)%k] == null)
-                             kArray[(colum*row)%k] = new ArrayList<ClusterIndex>();
-                             ClusterIndex temp = new ClusterIndex(TRGB[1][colum-1][row-1], TRGB[2][colum-1][row-1], TRGB[3][colum-1][row-1], seg, row-1,colum-1);
-                       kArray[(colum*row)%k].add(temp);
-
-           }
-      }
-    }
+        int[] compare = new int[k];
+        for(int row = 1; row <= My_row; row++){
+            for(int colum =1; colum<= My_column; colum++){
+                for(int seg = 0; seg < k; seg++){
+                    if(kArray[(colum*row)%k] == null) {
+                        kArray[(colum*row)%k] = 
+                            new ArrayList<ClusterIndex>();
+                    }
+                    ClusterIndex temp = 
+                        new ClusterIndex(TRGB[1][colum-1][row-1], 
+                            TRGB[2][colum-1][row-1], TRGB[3][colum-1][row-1], 
+                            seg, row-1, colum-1);
+                    kArray[(colum*row)%k].add(temp);
+                }
+            }
+        }
         boolean Flag = true;
         ArrayList<ClusterIndex>[] TArray = new ArrayList[k];
         int Max_Loop = 3;
         int M =0;
         int[] compare2 = new int[k];
 
-       while(Flag)
-        {
+        while(Flag){
             M++;
             if(M ==Max_Loop){
                 break;
             }
-       // Flag = false  ;
-
-
-        for(int i = 0; i< k; i++){
-
-             int s1, s2, s3;
+            // Flag = false  ;
+            for(int i = 0; i< k; i++){
+                int s1, s2, s3;
                 if(kArray[i] != null){
                     s1 = 0; s2 =0; s3 = 0;
                     for(int j = 0; j < kArray[i].size(); j++){
@@ -1995,95 +1929,111 @@ public class ImagePimp extends JFrame{
                         s2 += kArray[i].get(j).getG();
                         s3 += kArray[i].get(j).getB();
                     }
-
-                numberCluster[i][0] = (double)s1/(double)kArray[i].size();
-                numberCluster[i][1] = (double)s2/(double)kArray[i].size();
-                numberCluster[i][2] = (double)s3/(double)kArray[i].size();
+                    numberCluster[i][0] = (double)s1/(double)kArray[i].size();
+                    numberCluster[i][1] = (double)s2/(double)kArray[i].size();
+                    numberCluster[i][2] = (double)s3/(double)kArray[i].size();
                 }
-         }
-          for(int i = 0; i< k; i++){
+            }
+            for(int i = 0; i< k; i++){
                 if(kArray[i] != null){
                     int size = kArray[i].size()-1;
                     for(int j = size; j >= 0; j--){
-
                         double Min = Float.MAX_VALUE;
                         int index = -1;
                         for(int seg = 0; seg< k; seg++){
-                        double s1 = 0, s2 = 0, s3 = 0, result = 0, downS1, downS2,downS3;
-                        double p1 = (double)((kArray[i].get(j).getR()+1)/(double)(kArray[i].get(j).getSum()+1));
-                        double q1 = (numberCluster[seg][0]+1)/(numberCluster[seg][0]+numberCluster[seg][1]+numberCluster[seg][2]+1);
-                        s1 = p1*Math.log(p1/q1);
-                        downS1 = q1*Math.log(q1/p1);
-                        double p2 = (double)((kArray[i].get(j).getG()+1)/(double)(kArray[i].get(j).getSum()+1));
-                        double q2 = (numberCluster[seg][1]+1)/(numberCluster[seg][0]+numberCluster[seg][1]+numberCluster[seg][2]+1);
-                        s2 = p2*Math.log(p2/q2);
-                        downS2 = q2*Math.log(q2/p2);
-                        double p3 = (double)((kArray[i].get(j).getB()+1)/(double)(kArray[i].get(j).getSum()+1));
-                        double q3 = (numberCluster[seg][2]+1)/(numberCluster[seg][0]+numberCluster[seg][1]+numberCluster[seg][2]+1);
-                        s3 = p3*Math.log(p3/q3);
-                        downS3 = q3*Math.log(q3/p3);
-                        result = (s1 + s2 + s3 + downS1 +downS2 + downS3);
+                            double s1 = 0, s2 = 0, s3 = 0, result = 0, 
+                                downS1, downS2, downS3;
+                            double p1 = (kArray[i].get(j).getR()+1)/
+                                (kArray[i].get(j).getSum()+1.0);
+                            double q1 = (numberCluster[seg][0]+1)/
+                                (numberCluster[seg][0]+numberCluster[seg][1]+
+                                    numberCluster[seg][2]+1);
+                            s1 = p1*Math.log(p1/q1);
+                            downS1 = q1*Math.log(q1/p1);
+                            double p2 = (kArray[i].get(j).getG()+1)/
+                                (kArray[i].get(j).getSum()+1.0);
+                            double q2 = (numberCluster[seg][1]+1.0)/
+                                (numberCluster[seg][0]+numberCluster[seg][1]+
+                                numberCluster[seg][2]+1);
+                            s2 = p2*Math.log(p2/q2);
+                            downS2 = q2*Math.log(q2/p2);
+                            double p3 = (kArray[i].get(j).getB()+1)/
+                                (kArray[i].get(j).getSum()+1.0);
+                            double q3 = (numberCluster[seg][2]+1.0)/
+                                (numberCluster[seg][0]+numberCluster[seg][1]+
+                                numberCluster[seg][2]+1);
+                            s3 = p3*Math.log(p3/q3);
+                            downS3 = q3*Math.log(q3/p3);
+                            result = (s1 + s2 + s3 + downS1 +downS2 + downS3);
                             if(result <= Min){
                                 Min = result;
                                 index = seg;
                             }
-               //         System.out.println(" R= " + kArray[i].get(j).getR() + "G = " + kArray[i].get(j).getG() + "B = "+kArray[i].get(j).getB());
-               //         System.out.println(" downS1 = " + downS1 + " downS2 = " + downS2);
+                            // System.out.println(" R= " + kArray[i].get(j).getR() + "G = " + kArray[i].get(j).getG() + "B = "+kArray[i].get(j).getB());
+                            // System.out.println(" downS1 = " + downS1 + " downS2 = " + downS2);
                         }
-              //          System.out.println(index);
-//                        if(index !=  kArray[i].get(i).getCluster()){
-//                            Flag = true;
-//                        }
+                        // System.out.println(index);
+                        // if(index !=  kArray[i].get(i).getCluster()){
+                        //     Flag = true;
+                        // }
                         if(TArray[index] == null)
                             TArray[index] = new ArrayList<ClusterIndex>();
                         TArray[index].add(kArray[i].get(j).setCluster(index));
                         kArray[i].remove(j);
                         compare2[index] ++;
-
                     }
                 }
-          }
+            }
+
             kArray = TArray;
             int x = 0;
             for(int j= 0; j <k; j++){
-
                 if (compare2[j] == compare[j]){
                     x++ ;
                 }
 
-            if (x == k){
-                Flag = false ;
-            }
-            else
-                compare = compare2;
+                if (x == k){
+                    Flag = false ;
+                } else { 
+                    compare = compare2;
+                }
             }
         }
-       int rd, gr,bl;
-        for(int i = 0; i< k; i++)
-        {
-                if(i==0){
-                    rd = 255; gr = 0; bl = 0;}
-                else if(i==1){
-                    rd = 0; gr = 255; bl = 0;}
-                else if(i==2){
-                    rd = 0; gr = 0; bl = 255;}
-                else if(i==3){
-                    rd = 255; gr = 255; bl = 255;}
-                else if(i==4){
-                    rd = 0; gr = 0; bl = 0;}
-                else if(i==5){
-                    rd = 255; gr = 255; bl = 0;}
-                else if(i==6){
-                    rd = 0; gr = 255; bl = 255;}
-                else if(i==7){
-                    rd = 255; gr = 0; bl = 255;}
-                else{
-                    rd = r.nextInt(256);
-                    gr = r.nextInt(256);
-                    bl = r.nextInt(256);}
+
+        int rd, gr,bl;
+        for(int i = 0; i< k; i++) {
+                switch(i){
+                    case 0:
+                        rd = 255; gr = 0; bl = 0;
+                        break;
+                    case 1:
+                        rd = 0; gr = 255; bl = 0; 
+                        break;
+                    case 2:
+                        rd = 0; gr = 0; bl = 255; 
+                        break;
+                    case 3:
+                        rd = 255; gr = 255; bl = 255;
+                        break;
+                    case 4:
+                        rd = 0; gr = 0; bl = 0;
+                        break;
+                    case 5:
+                        rd = 255; gr = 255; bl = 0;
+                        break;
+                    case 6:
+                        rd = 0; gr = 255; bl = 255;
+                        break;
+                    case 7:
+                        rd = 255; gr = 0; bl = 255;
+                        break;
+                    default:               
+                        rd = r.nextInt(256);
+                        gr = r.nextInt(256);
+                        bl = r.nextInt(256);
+                }
             if(kArray[i] != null){
-                for(int j = 0; j< kArray[i].size(); j++)
-                {
+                for(int j = 0; j< kArray[i].size(); j++) {
                     TRGB[1][kArray[i].get(j).getIndex_y()][kArray[i].get(j).getIndex_x()] = rd;
                     TRGB[2][kArray[i].get(j).getIndex_y()][kArray[i].get(j).getIndex_x()] = gr;
                     TRGB[3][kArray[i].get(j).getIndex_y()][kArray[i].get(j).getIndex_x()] = bl;
@@ -2105,56 +2055,32 @@ public class ImagePimp extends JFrame{
 
         return pixelsArrayToImage(TRGBArrayToPixelsArray(TRGB, imageInDimension), imageInDimension);
     }
-        protected Image MySuperkMeansSIMSegmetation(Image imageIn, int numSegments){
-        class ColorsClusterIndex{
-            private int color1, color2, color3, cluster, index;
-            public ColorsClusterIndex(int one, int two, int three, int c, int i){
-                color1 = one;
-                color2 = two;
-                color3 = three;
-                cluster = c;
-                index = i;
-            }
-            public int getC1(){ return color1; }
-            public int getC2(){ return color2; }
-            public int getC3(){ return color3; }
-            public int getCluster(){ return cluster; }
-            public ColorsClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex(){
-                return index;
-            }
-            public int getSum(){
-                return color1 + color2 + color3;
-            }
-        }
+    protected Image MySuperkMeansSIMSegmetation(Image imageIn, 
+            int numSegments){
 
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
         int pixel[] = imageToPixelsArray(imageIn);
         ArrayList<ColorsClusterIndex>[] kArray = new ArrayList[numSegments];
 
-        for(int i=0; i<pixel.length; i++)
-        {
+        for(int i=0; i<pixel.length; i++) {
             int c1, c2, c3;
-                c1 = getRedComponent(pixel[i]);
-                c2 = getGreenComponent(pixel[i]);
-                c3 = getBlueComponent(pixel[i]);
+            c1 = getRedComponent(pixel[i]);
+            c2 = getGreenComponent(pixel[i]);
+            c3 = getBlueComponent(pixel[i]);
             int rand = r.nextInt(numSegments);
-            if(kArray[rand] == null)
+            if(kArray[rand] == null) {
                 kArray[rand] = new ArrayList<ColorsClusterIndex>();
-            ColorsClusterIndex temp = new ColorsClusterIndex(c1, c2, c3, rand, i);
+            }
+            ColorsClusterIndex temp = 
+                new ColorsClusterIndex(c1, c2, c3, rand, i);
             kArray[rand].add(temp);
         }
 
         boolean changes = true;
         double[][] means = new double[numSegments][3];
-        int flag = 0;
         int counter = 100000;
-        while (changes)
-        {
+        while (changes){
             changes = false;
 
             int sumC1, sumC2, sumC3;
@@ -2167,192 +2093,181 @@ public class ImagePimp extends JFrame{
                         sumC2 += kArray[i].get(j).getC2();
                         sumC3 += kArray[i].get(j).getC3();
                     }
-                means[i][0] = (double)sumC1/(double)kArray[i].size();
-                means[i][1] = (double)sumC2/(double)kArray[i].size();
-                means[i][2] = (double)sumC3/(double)kArray[i].size();
+                    means[i][0] = (double)sumC1/(double)kArray[i].size();
+                    means[i][1] = (double)sumC2/(double)kArray[i].size();
+                    means[i][2] = (double)sumC3/(double)kArray[i].size();
                 }
             }
 
-            ArrayList<ColorsClusterIndex>[] tempArray = new ArrayList[numSegments];
+            ArrayList<ColorsClusterIndex>[] tempArray = 
+                new ArrayList[numSegments];
             for(int i = 0; i<numSegments; i++){
                 if(kArray[i] != null){
                     int size = kArray[i].size()-1;
                     for(int j = size; j >= 0; j--){
-
                         double minAveDiff = Float.MAX_VALUE;
                         int index = -1;
                         for(int k = 0; k<numSegments; k++){
-                        double s1 = 0, s2 = 0, s3 = 0, result = 0, downS1, downS2,downS3;
-                        double p1;
-                       if(kArray[i].get(j).getC1() == 0 ){
-                           p1 = 1.0/(255+255+255);
-                       }else{
-                           p1 = (double)(kArray[i].get(j).getC1())/(kArray[i].get(j).getSum());
-                       }
+                            double s1 = 0, s2 = 0, s3 = 0, result = 0, 
+                                downS1, downS2,downS3;
+                            double p1;
+                            if(kArray[i].get(j).getC1() == 0 ){
+                                p1 = 1.0/(255+255+255);
+                            }else{
+                                p1 = (double)(kArray[i].get(j).getC1())/
+                                    kArray[i].get(j).getSum();
+                            }
 
-                       double q1;
-                       if(means[k][0] == 0){
-                          q1 = 1.0/(255+255+255);
-                       }else{
-                           q1 = (means[k][0])/(means[k][0]+means[k][1]+means[k][2]);
-                       }
-                        s1 = Math.abs(p1*(Math.log(p1/q1)/Math.log(2.0)));
-                        downS1 = Math.abs(q1*(Math.log(q1/p1)/Math.log(2.0)));
+                            double q1;
+                            if(means[k][0] == 0){
+                                q1 = 1.0/(255+255+255);
+                            }else{
+                                q1 = (means[k][0])/
+                                    (means[k][0]+means[k][1]+means[k][2]);
+                            }
+                            s1 = Math.abs(p1*(Math.log(p1/q1)/Math.log(2.0)));
+                            downS1 = Math.abs(q1*(Math.log(q1/p1)/Math.log(2.0)));
 
-                        double p2;
-                       if(kArray[i].get(j).getC2()==0){
-                           p2 = 1.0/(255+255+255);
-                       }else{
-                           p2 = (double)(kArray[i].get(j).getC2())/(kArray[i].get(j).getSum());
-                       }
-                        double q2;
-                        if(means[k][1]==0){
-                           q2 = 1.0/(255+255+255);
-                        }else{
-                           q2 = (means[k][1])/(means[k][0]+means[k][1]+means[k][2]);
-                        }
-                        s2 = Math.abs(p2*(Math.log(p2/q2)/Math.log(2.0)));
-                        downS2 = Math.abs(q2*(Math.log(q2/p2)/Math.log(2.0)));
+                            double p2;
+                            if(kArray[i].get(j).getC2()==0){
+                                p2 = 1.0/(255+255+255);
+                            }else{
+                                p2 = (double)(kArray[i].get(j).getC2())/
+                                    kArray[i].get(j).getSum();
+                            }
+                            double q2;
+                            if(means[k][1]==0){
+                                q2 = 1.0/(255+255+255);
+                            }else{
+                                q2 = (means[k][1])/
+                                    (means[k][0]+means[k][1]+means[k][2]);
+                            }
+                            s2 = Math.abs(p2*(Math.log(p2/q2)/Math.log(2.0)));
+                            downS2 = Math.abs(q2*(Math.log(q2/p2)/Math.log(2.0)));
 
-                        double p3
+                            double p3;
+                            if(kArray[i].get(j).getC3()==0){
+                                p3 = 1.0/(255+255+255);
+                            }else{
+                                p3 = (double)(kArray[i].get(j).getC3())/
+                                    (kArray[i].get(j).getSum());
+                            }
 
-                                ;
-                        if(kArray[i].get(j).getC3()==0){
-                            p3 = 1.0/(255+255+255);
-                        }else{
-                            p3 = (double)(kArray[i].get(j).getC3())/(kArray[i].get(j).getSum());
-                       }
-                        double q3;
-                        if(means[k][2]==0){
-                            q3 = 1.0/(255+255+255);
-                        }else{
-                           q3 = (double)(means[k][2])/(means[k][0]+means[k][1]+means[k][2]);
-                        }
-                        s3 = Math.abs(p3*(Math.log(p3/q3)/Math.log(2.0)));
-                       downS3 = Math.abs(q3*(Math.log(q3/p3)/Math.log(2.0)));
-                       double sum = (kArray[i].get(j).getC3() + kArray[i].get(j).getC2()+kArray[i].get(j).getC1());
-                       double sum2 = (means[k][0]+means[k][1]+means[k][2]);
-                      double con = Math.abs((sum) - (sum2));
-                      con = Math.pow(con, 2);
-                      if(con == 0){
-                           con = 1;
-                       }
-                       result =  Math.pow(s1 + s2 + s3 + downS1 +downS2 + downS3, 0.5);
-                       result = con*(result)*10000;
-                       if(result< minAveDiff){
+                            double q3;
+                            if(means[k][2]==0){
+                                q3 = 1.0/(255+255+255);
+                            }else{
+                                q3 = (means[k][2])/
+                                    (means[k][0]+means[k][1]+means[k][2]);
+                            }
+                            s3 = Math.abs(p3*(Math.log(p3/q3)/Math.log(2.0)));
+                            downS3 = Math.abs(q3*(Math.log(q3/p3)/Math.log(2.0)));
+                            double sum = (kArray[i].get(j).getC3() + 
+                                kArray[i].get(j).getC2()+kArray[i].get(j).getC1());
+                            double sum2 = (means[k][0]+means[k][1]+means[k][2]);
+                            double con = Math.abs((sum) - (sum2));
+                            con = Math.pow(con, 2);
+                            if(con == 0){
+                                con = 1;
+                            }
+                            result = Math.pow(s1 + s2 + s3 + 
+                                downS1 +downS2 + downS3, 0.5);
+                            result = con*(result)*10000;
+                            if(result< minAveDiff){
                                 minAveDiff = result;
                                 index = k;
-                          //      System.out.println("result = " + result);
+                                //System.out.println("result = " + result);
                             }
                         }
                         //System.out.println("index = " + index);
                         if(index != kArray[i].get(j).getCluster()){
-                             changes = true;
-
+                            changes = true;
                         }
-                       if(counter == 100050){
-                              changes = false;
+                        if(counter == 100050){
+                            changes = false;
                         }
-                        if(tempArray[index] == null)
-                            tempArray[index] = new ArrayList<ColorsClusterIndex>();
+                        if(tempArray[index] == null){
+                            tempArray[index] = 
+                                new ArrayList<ColorsClusterIndex>();
+                        }
                         tempArray[index].add(kArray[i].get(j).setCluster(index));
                         kArray[i].remove(j);
                     }
                 }
             }
-           // for()
+            // for()
             kArray = tempArray;
-        counter++;
-
+            counter++;
         }
-       System.out.println(" counter = " + counter);
-        for(int i = 0; i<numSegments; i++)
-        {
-          int rd,gr,bl;
-                if(i==0){
-                    rd = 255; gr = 0; bl = 0;}
-                else if(i==1){
-                    rd = 0; gr = 255; bl = 0;}
-                else if(i==2){
-                    rd = 0; gr = 0; bl = 255;}
-                else if(i==3){
-                    rd = 255; gr = 255; bl = 255;}
-                else if(i==4){
-                    rd = 0; gr = 0; bl = 0;}
-                else if(i==5){
-                    rd = 255; gr = 255; bl = 0;}
-                else if(i==6){
-                    rd = 0; gr = 255; bl = 255;}
-                else if(i==7){
-                    rd = 255; gr = 0; bl = 255;}
-                else{
+        System.out.println(" counter = " + counter);
+        for(int i = 0; i<numSegments; i++) {
+            int rd,gr,bl;
+            switch(i){
+                case 0:
+                    rd = 255; gr = 0; bl = 0;
+                    break;
+                case 1:
+                    rd = 0; gr = 255; bl = 0;
+                    break;
+                case 2:
+                    rd = 0; gr = 0; bl = 255;
+                    break;
+                case 3:
+                    rd = 255; gr = 255; bl = 255;
+                    break;
+                case 4:
+                    rd = 0; gr = 0; bl = 0;
+                    break;
+                case 5:
+                    rd = 255; gr = 255; bl = 0;
+                    break;
+                case 6:
+                    rd = 0; gr = 255; bl = 255;
+                    break;
+                case 7:
+                    rd = 255; gr = 0; bl = 255;
+                    break;
+                default:
                     rd = r.nextInt(256);
                     gr = r.nextInt(256);
-                    bl = r.nextInt(256);}
-
+                    bl = r.nextInt(256);
+            }
 
             if(kArray[i] != null){
-                for(int j = 0; j<kArray[i].size(); j++)
-                {
+                for(int j = 0; j<kArray[i].size(); j++) {
                     pixel[kArray[i].get(j).getIndex()] = getTRGB(255,rd,gr,bl);
                 }
             }
         }
-
         return pixelsArrayToImage(pixel, imageInDimension);
     }
 
 
 
      protected Image My_SAMSuperkMeansSegmetation(Image imageIn, int numSegments){
-        class ColorsClusterIndex{
-            private int color1, color2, color3, cluster, index;
-            public ColorsClusterIndex(int one, int two, int three, int c, int i){
-                color1 = one;
-                color2 = two;
-                color3 = three;
-                cluster = c;
-                index = i;
-            }
-            public int getC1(){ return color1; }
-            public int getC2(){ return color2; }
-            public int getC3(){ return color3; }
-            public int getCluster(){ return cluster; }
-            public ColorsClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex(){
-                return index;
-            }
-            public int getSum(){
-                return color1 + color2 + color3;
-            }
-        }
 
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
         int pixel[] = imageToPixelsArray(imageIn);
         ArrayList<ColorsClusterIndex>[] kArray = new ArrayList[numSegments];
 
-        for(int i=0; i<pixel.length; i++)
-        {
+        for(int i=0; i<pixel.length; i++) {
             int c1, c2, c3;
-                c1 = getRedComponent(pixel[i]);
-                c2 = getGreenComponent(pixel[i]);
-                c3 = getBlueComponent(pixel[i]);
+            c1 = getRedComponent(pixel[i]);
+            c2 = getGreenComponent(pixel[i]);
+            c3 = getBlueComponent(pixel[i]);
             int rand = r.nextInt(numSegments);
-            if(kArray[rand] == null)
+            if(kArray[rand] == null){
                 kArray[rand] = new ArrayList<ColorsClusterIndex>();
-            ColorsClusterIndex temp = new ColorsClusterIndex(c1, c2, c3, rand, i);
+            }
+            ColorsClusterIndex temp = 
+                new ColorsClusterIndex(c1, c2, c3, rand, i);
             kArray[rand].add(temp);
         }
 
         boolean changes = true;
         double[][] means = new double[numSegments][3];
-        int flag = 0;
-        while (changes)
-        {
+        while (changes) {
             changes = false;
             int sumC1, sumC2, sumC3;
 
@@ -2364,13 +2279,14 @@ public class ImagePimp extends JFrame{
                         sumC2 += kArray[i].get(j).getC2();
                         sumC3 += kArray[i].get(j).getC3();
                     }
-                means[i][0] = (double)sumC1/(double)kArray[i].size();
-                means[i][1] = (double)sumC2/(double)kArray[i].size();
-                means[i][2] = (double)sumC3/(double)kArray[i].size();
+                    means[i][0] = (double)sumC1/(double)kArray[i].size();
+                    means[i][1] = (double)sumC2/(double)kArray[i].size();
+                    means[i][2] = (double)sumC3/(double)kArray[i].size();
                 }
             }
 
-            ArrayList<ColorsClusterIndex>[] tempArray = new ArrayList[numSegments];
+            ArrayList<ColorsClusterIndex>[] tempArray = 
+                new ArrayList[numSegments];
             for(int i = 0; i<numSegments; i++){
                 if(kArray[i] != null){
                     int size = kArray[i].size()-1;
@@ -2379,73 +2295,83 @@ public class ImagePimp extends JFrame{
                         double minAveDiff = Float.MAX_VALUE;
                         int index = -1;
                         for(int k = 0; k<numSegments; k++){
-                        double s1 = 0, s2 = 0, s3 = 0, result, downS1, downS2;
-                        s1 = kArray[i].get(j).getC1()*means[k][0];
-                        s2 = kArray[i].get(j).getC2()*means[k][1];
-                        s3 = kArray[i].get(j).getC3()*means[k][2];
-                        downS1 =Math.pow((double)kArray[i].get(j).getC1(),2) +
-                                Math.pow((double)kArray[i].get(j).getC2(),2) +
-                                Math.pow((double)kArray[i].get(j).getC3(),2);
-                        downS1 = Math.sqrt(downS1);
-                        downS2 =Math.pow((double)means[k][0],2) +
-                                Math.pow((double)means[k][1],2) +
-                                Math.pow((double)means[k][2],2);
-                        downS2 = Math.sqrt(downS2);
+                            double s1 = 0, s2 = 0, s3 = 0, result, 
+                                downS1, downS2;
+                            s1 = kArray[i].get(j).getC1()*means[k][0];
+                            s2 = kArray[i].get(j).getC2()*means[k][1];
+                            s3 = kArray[i].get(j).getC3()*means[k][2];
+                            downS1 =Math.pow(kArray[i].get(j).getC1(),2) +
+                                    Math.pow(kArray[i].get(j).getC2(),2) +
+                                    Math.pow(kArray[i].get(j).getC3(),2);
+                            downS1 = Math.sqrt(downS1);
+                            downS2 =Math.pow(means[k][0],2) +
+                                    Math.pow(means[k][1],2) +
+                                    Math.pow(means[k][2],2);
+                            downS2 = Math.sqrt(downS2);
 
-                        result = (int)(Math.acos((s1 + s2 + s3)/(downS1*downS2))*1000000);
-                      //  System.out.println(" s1 = " + s1 + " s2 = " + s2 + "s3 = " + s3);
-                     //   System.out.println("downs1 = " + downS1 + " downS2 = " + downS2);
+                            result = (int)(Math.acos((s1 + s2 + s3)/
+                                (downS1*downS2))*1000000);
+                            // System.out.println(" s1 = " + s1 + " s2 = " + s2 + "s3 = " + s3);
+                            // System.out.println("downs1 = " + downS1 + " downS2 = " + downS2);
                             if(result< minAveDiff){
                                 minAveDiff = result;
                                 index = k;
-                     //           System.out.println("result = " + result);
+                                // System.out.println("result = " + result);
                             }
                         }
-                   //     System.out.println("index = " + index);
+                        // System.out.println("index = " + index);
                         if(index != kArray[i].get(j).getCluster()){
-                             changes = true;
-
+                            changes = true;
                         }
-                        if(tempArray[index] == null)
-                            tempArray[index] = new ArrayList<ColorsClusterIndex>();
+                        if(tempArray[index] == null) {
+                            tempArray[index] = 
+                                new ArrayList<ColorsClusterIndex>();
+                        }
                         tempArray[index].add(kArray[i].get(j).setCluster(index));
                         kArray[i].remove(j);
                     }
                 }
             }
             kArray = tempArray;
-
-
         }
 
-        for(int i = 0; i<numSegments; i++)
-        {
-          int rd,gr,bl;
-                if(i==0){
-                    rd = 255; gr = 0; bl = 0;}
-                else if(i==1){
-                    rd = 0; gr = 255; bl = 0;}
-                else if(i==2){
-                    rd = 0; gr = 0; bl = 255;}
-                else if(i==3){
-                    rd = 255; gr = 255; bl = 255;}
-                else if(i==4){
-                    rd = 0; gr = 0; bl = 0;}
-                else if(i==5){
-                    rd = 255; gr = 255; bl = 0;}
-                else if(i==6){
-                    rd = 0; gr = 255; bl = 255;}
-                else if(i==7){
-                    rd = 255; gr = 0; bl = 255;}
-                else{
+        for(int i = 0; i<numSegments; i++) {
+            int rd,gr,bl;
+            switch (i){
+                case 0:
+                    rd = 255; gr = 0; bl = 0;
+                    break;
+                case 1:
+                    rd = 0; gr = 255; bl = 0;
+                    break;
+                case 2:
+                    rd = 0; gr = 0; bl = 255;
+                    break;
+                case 3:
+                    rd = 255; gr = 255; bl = 255;
+                    break;
+                case 4:
+                    rd = 0; gr = 0; bl = 0;
+                    break;
+                case 5:
+                    rd = 255; gr = 255; bl = 0;
+                    break;
+                case 6:
+                    rd = 0; gr = 255; bl = 255;
+                    break;
+                case 7:
+                    rd = 255; gr = 0; bl = 255;
+                    break;
+                default:
                     rd = r.nextInt(256);
                     gr = r.nextInt(256);
-                    bl = r.nextInt(256);}
+                    bl = r.nextInt(256);
+                    break;
+            }
 
 
             if(kArray[i] != null){
-                for(int j = 0; j<kArray[i].size(); j++)
-                {
+                for(int j = 0; j<kArray[i].size(); j++) {
                     pixel[kArray[i].get(j).getIndex()] = getTRGB(255,rd,gr,bl);
                 }
             }
@@ -2453,39 +2379,16 @@ public class ImagePimp extends JFrame{
 
         return pixelsArrayToImage(pixel, imageInDimension);
     }
-      protected Image My_SIMTANSuperkMeansSegmetation(Image imageIn, int numSegments){
-        class ColorsClusterIndex{
-            private int color1, color2, color3, cluster, index;
-            public ColorsClusterIndex(int one, int two, int three, int c, int i){
-                color1 = one;
-                color2 = two;
-                color3 = three;
-                cluster = c;
-                index = i;
-            }
-            public int getC1(){ return color1; }
-            public int getC2(){ return color2; }
-            public int getC3(){ return color3; }
-            public int getCluster(){ return cluster; }
-            public ColorsClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex(){
-                return index;
-            }
-            public int getSum(){
-                return color1 + color2 + color3;
-            }
-        }
+
+    protected Image My_SIMTANSuperkMeansSegmetation(Image imageIn, 
+            int numSegments){
 
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
         int pixel[] = imageToPixelsArray(imageIn);
         ArrayList<ColorsClusterIndex>[] kArray = new ArrayList[numSegments];
 
-        for(int i=0; i<pixel.length; i++)
-        {
+        for(int i=0; i<pixel.length; i++) {
             int c1, c2, c3;
                 c1 = getRedComponent(pixel[i]);
                 c2 = getGreenComponent(pixel[i]);
@@ -2499,9 +2402,7 @@ public class ImagePimp extends JFrame{
 
         boolean changes = true;
         double[][] means = new double[numSegments][3];
-        int flag = 0;
-        while (changes)
-        {
+        while (changes) {
             changes = false;
             int sumC1, sumC2, sumC3;
 
@@ -2528,72 +2429,81 @@ public class ImagePimp extends JFrame{
                         double minAveDiff = Float.MAX_VALUE;
                         int index = -1;
                         for(int k = 0; k<numSegments; k++){
-                        double s1 = 0, s2 = 0, s3 = 0, result, downS1, downS2;
-                        s1 = kArray[i].get(j).getC1()*means[k][0];
-                        s2 = kArray[i].get(j).getC2()*means[k][1];
-                        s3 = kArray[i].get(j).getC3()*means[k][2];
-                        downS1 =Math.pow((double)kArray[i].get(j).getC1(),2) +
-                                Math.pow((double)kArray[i].get(j).getC2(),2) +
-                                Math.pow((double)kArray[i].get(j).getC3(),2);
-                        downS1 = Math.sqrt(downS1);
-                        downS2 =Math.pow((double)means[k][0],2) +
-                                Math.pow((double)means[k][1],2) +
-                                Math.pow((double)means[k][2],2);
-                        downS2 = Math.sqrt(downS2);
-                        result = (int)(Math.acos((s1 + s2 + s3)/(downS1*downS2))*1000);
-                     //   System.out.println(" s1 = " + s1 + " s2 = " + s2 + "s3 = " + s3);
-                     //   System.out.println("downs1 = " + downS1 + " downS2 = " + downS2);
+                            double s1 = 0, s2 = 0, s3 = 0, result, downS1, downS2;
+                            s1 = kArray[i].get(j).getC1()*means[k][0];
+                            s2 = kArray[i].get(j).getC2()*means[k][1];
+                            s3 = kArray[i].get(j).getC3()*means[k][2];
+                            downS1 =Math.pow(kArray[i].get(j).getC1(),2) +
+                                    Math.pow(kArray[i].get(j).getC2(),2) +
+                                    Math.pow(kArray[i].get(j).getC3(),2);
+                            downS1 = Math.sqrt(downS1);
+                            downS2 =Math.pow(means[k][0],2) +
+                                    Math.pow(means[k][1],2) +
+                                    Math.pow(means[k][2],2);
+                            downS2 = Math.sqrt(downS2);
+                            result = (int)
+                                (Math.acos((s1 + s2 + s3)/(downS1*downS2))*1000);
+                            //   System.out.println(" s1 = " + s1 + " s2 = " + s2 + "s3 = " + s3);
+                            //   System.out.println("downs1 = " + downS1 + " downS2 = " + downS2);
                             if(result< minAveDiff){
                                 minAveDiff = result;
                                 index = k;
-                   //             System.out.println("result = " + result);
+                                // System.out.println("result = " + result);
                             }
                         }
                         System.out.println("index = " + index);
                         if(index != kArray[i].get(j).getCluster()){
                              changes = true;
-
                         }
-                        if(tempArray[index] == null)
-                            tempArray[index] = new ArrayList<ColorsClusterIndex>();
-                        tempArray[index].add(kArray[i].get(j).setCluster(index));
+                        if(tempArray[index] == null) {
+                            tempArray[index] = 
+                                new ArrayList<ColorsClusterIndex>();
+                        }
+                        tempArray[index].add(
+                            kArray[i].get(j).setCluster(index));
                         kArray[i].remove(j);
                     }
                 }
             }
             kArray = tempArray;
-
-
         }
 
-        for(int i = 0; i<numSegments; i++)
-        {
-          int rd,gr,bl;
-                if(i==0){
-                    rd = 255; gr = 0; bl = 0;}
-                else if(i==1){
-                    rd = 0; gr = 255; bl = 0;}
-                else if(i==2){
-                    rd = 0; gr = 0; bl = 255;}
-                else if(i==3){
-                    rd = 255; gr = 255; bl = 255;}
-                else if(i==4){
-                    rd = 0; gr = 0; bl = 0;}
-                else if(i==5){
-                    rd = 255; gr = 255; bl = 0;}
-                else if(i==6){
-                    rd = 0; gr = 255; bl = 255;}
-                else if(i==7){
-                    rd = 255; gr = 0; bl = 255;}
-                else{
+        for(int i = 0; i<numSegments; i++) {
+            int rd,gr,bl;
+            switch(i){
+                case 0:
+                    rd = 255; gr = 0; bl = 0;
+                    break;
+                case 1:
+                    rd = 0; gr = 255; bl = 0;
+                    break;
+                case 2:
+                    rd = 0; gr = 0; bl = 255;
+                    break;
+                case 3:
+                    rd = 255; gr = 255; bl = 255;
+                    break;
+                case 4:
+                    rd = 0; gr = 0; bl = 0;
+                    break;
+                case 5:
+                    rd = 255; gr = 255; bl = 0;
+                    break;
+                case 6:
+                    rd = 0; gr = 255; bl = 255;
+                    break;
+                case 7:
+                    rd = 255; gr = 0; bl = 255;
+                    break;
+                default:
                     rd = r.nextInt(256);
                     gr = r.nextInt(256);
-                    bl = r.nextInt(256);}
-
+                    bl = r.nextInt(256);
+                    break;
+            }
 
             if(kArray[i] != null){
-                for(int j = 0; j<kArray[i].size(); j++)
-                {
+                for(int j = 0; j<kArray[i].size(); j++) {
                     pixel[kArray[i].get(j).getIndex()] = getTRGB(255,rd,gr,bl);
                 }
             }
@@ -2602,30 +2512,6 @@ public class ImagePimp extends JFrame{
         return pixelsArrayToImage(pixel, imageInDimension);
     }
   /*  protected Image My_EntropySuperkMeansSegmetation(Image imageIn, int numSegments){
-        class ColorsClusterIndex{
-            private int color1, color2, color3, cluster, index;
-            public ColorsClusterIndex(int one, int two, int three, int c, int i){
-                color1 = one;
-                color2 = two;
-                color3 = three;
-                cluster = c;
-                index = i;
-            }
-            public int getC1(){ return color1; }
-            public int getC2(){ return color2; }
-            public int getC3(){ return color3; }
-            public int getCluster(){ return cluster; }
-            public ColorsClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex(){
-                return index;
-            }
-            public int getSum(){
-                return color1 + color2 + color3;
-            }
-        }
 
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
@@ -2762,30 +2648,6 @@ public class ImagePimp extends JFrame{
 */
       /*
     protected Image My_SIMSuperkMeansSegmetation(Image imageIn, int numSegments){
-        class ColorsClusterIndex{
-            private int color1, color2, color3, cluster, index;
-            public ColorsClusterIndex(int one, int two, int three, int c, int i){
-                color1 = one;
-                color2 = two;
-                color3 = three;
-                cluster = c;
-                index = i;
-            }
-            public int getC1(){ return color1; }
-            public int getC2(){ return color2; }
-            public int getC3(){ return color3; }
-            public int getCluster(){ return cluster; }
-            public ColorsClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex(){
-                return index;
-            }
-            public int getSum(){
-                return color1 + color2 + color3;
-            }
-        }
 
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
@@ -2911,30 +2773,6 @@ public class ImagePimp extends JFrame{
     }
 */
      protected Image MySpectralAngleMapper(Image imageIn, int numSegments){
-        class ColorsClusterIndex{
-            private int color1, color2, color3, cluster, index;
-            public ColorsClusterIndex(int one, int two, int three, int c, int i){
-                color1 = one;
-                color2 = two;
-                color3 = three;
-                cluster = c;
-                index = i;
-            }
-            public int getC1(){ return color1; }
-            public int getC2(){ return color2; }
-            public int getC3(){ return color3; }
-            public int getCluster(){ return cluster; }
-            public ColorsClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex(){
-                return index;
-            }
-            public int getSum(){
-                return color1 + color2 + color3;
-            }
-        }
 
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
@@ -2956,9 +2794,7 @@ public class ImagePimp extends JFrame{
 
         boolean changes = true;
         double[][] means = new double[numSegments][3];
-        int flag = 0;
-        while (changes)
-        {
+        while (changes) {
             changes = false;
             int sumC1, sumC2, sumC3;
 
@@ -2985,46 +2821,44 @@ public class ImagePimp extends JFrame{
                         double minAveDiff = Float.MAX_VALUE;
                         int index = -1;
                         for(int k = 0; k<numSegments; k++){
-                        double s1 = 0, s2 = 0, s3 = 0, result, downS1, downS2;
-                        s1 = kArray[i].get(j).getC1()*means[k][0];
-                        s2 = kArray[i].get(j).getC2()*means[k][1];
-                        s3 = kArray[i].get(j).getC3()*means[k][2];
-                        downS1 =Math.pow((double)kArray[i].get(j).getC1(),2) +
-                                Math.pow((double)kArray[i].get(j).getC2(),2) +
-                                Math.pow((double)kArray[i].get(j).getC3(),2);
-                        downS1 = Math.sqrt(downS1);
-                        downS2 =Math.pow((double)means[k][0],2) +
-                                Math.pow((double)means[k][1],2) +
-                                Math.pow((double)means[k][2],2);
-                        downS2 = Math.sqrt(downS2);
-                        result = (int)(Math.acos((s1 + s2 + s3)/(downS1*downS2))*1000);
-                     //   System.out.println(" s1 = " + s1 + " s2 = " + s2 + "s3 = " + s3);
-                     //   System.out.println("downs1 = " + downS1 + " downS2 = " + downS2);
+                            double s1 = 0, s2 = 0, s3 = 0, result, downS1, downS2;
+                            s1 = kArray[i].get(j).getC1()*means[k][0];
+                            s2 = kArray[i].get(j).getC2()*means[k][1];
+                            s3 = kArray[i].get(j).getC3()*means[k][2];
+                            downS1 =Math.pow(kArray[i].get(j).getC1(),2) +
+                                    Math.pow(kArray[i].get(j).getC2(),2) +
+                                    Math.pow(kArray[i].get(j).getC3(),2);
+                            downS1 = Math.sqrt(downS1);
+                            downS2 =Math.pow(means[k][0],2) +
+                                    Math.pow(means[k][1],2) +
+                                    Math.pow(means[k][2],2);
+                            downS2 = Math.sqrt(downS2);
+                            result = (int)(Math.acos((s1 + s2 + s3)/(downS1*downS2))*1000);
+                            // System.out.println(" s1 = " + s1 + " s2 = " + s2 + "s3 = " + s3);
+                            // System.out.println("downs1 = " + downS1 + " downS2 = " + downS2);
                             if(result< minAveDiff){
                                 minAveDiff = result;
                                 index = k;
-                   //             System.out.println("result = " + result);
+                                // System.out.println("result = " + result);
                             }
                         }
-                   //     System.out.println("index = " + index);
+                        // System.out.println("index = " + index);
                         if(index != kArray[i].get(j).getCluster()){
                              changes = true;
-
                         }
-                        if(tempArray[index] == null)
-                            tempArray[index] = new ArrayList<ColorsClusterIndex>();
+                        if(tempArray[index] == null) {
+                            tempArray[index] = 
+                                new ArrayList<ColorsClusterIndex>();
+                        }
                         tempArray[index].add(kArray[i].get(j).setCluster(index));
                         kArray[i].remove(j);
                     }
                 }
             }
             kArray = tempArray;
-
-
         }
 
-        for(int i = 0; i<numSegments; i++)
-        {
+        for(int i = 0; i<numSegments; i++) {
           int rd,gr,bl;
                 if(i==0){
                     rd = 255; gr = 0; bl = 0;}
@@ -3089,9 +2923,6 @@ public class ImagePimp extends JFrame{
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
         int pixel[] = imageToPixelsArray(imageIn);
-        int My_row  =(int)imageInDimension.getHeight();   // row number
-        int My_column =(int)imageInDimension.getWidth();  // column number
-        int TRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
         ArrayList<ColorsClusterIndex>[] kArray = new ArrayList[numSegments];
      //   ArrayList<ColorsClusterIndex>[] SIMArray = new ArrayList[numSegments];
         /*
@@ -3150,9 +2981,9 @@ public class ImagePimp extends JFrame{
                     int size = kArray[i].size()-1;
                     for(int j = size; j >= 0; j--){
 
-                        double minAveDiff = Float.MAX_VALUE,result = 0;
+                        double minAveDiff = Float.MAX_VALUE;
                         int index = -1;
-                       for(int k = 0; k<numSegments; k++){
+                        for(int k = 0; k<numSegments; k++){
                             int sumDiff = 0;
                             sumDiff += Math.pow((kArray[i].get(j).getC1()-means[k][0]),2);
                             sumDiff += Math.pow((kArray[i].get(j).getC2()-means[k][1]),2);
@@ -3183,62 +3014,61 @@ public class ImagePimp extends JFrame{
                     int size = kArray[i].size()-1;
                     for(int j = size; j >= 0; j--){
 
-                        double minAveDiff = Float.MAX_VALUE,result = 0;
+                        double minAveDiff = Float.MAX_VALUE;
                         int index = -1;
                        for(int k = 0; k<numSegments; k++){
-                          int sumDiff = 0;
-                       double s1 = 0, s2 = 0, s3 = 0, Result = 0, downS1, downS2,downS3;
-                       double p1;
-                       if(kArray[i].get(j).getC1() == 0 ){
-                           p1 = 1.0/(255+255+255);
-                       }else{
-                           p1 = (double)(kArray[i].get(j).getC1()+1)/(kArray[i].get(j).getSum());
-                       }
+                           double s1 = 0, s2 = 0, s3 = 0, Result = 0, downS1, downS2,downS3;
+                           double p1;
+                           if(kArray[i].get(j).getC1() == 0 ){
+                               p1 = 1.0/(255+255+255);
+                           }else{
+                               p1 = (double)(kArray[i].get(j).getC1()+1)/(kArray[i].get(j).getSum());
+                           }
 
-                       double q1;
-                       if(means[k][0] == 0){
-                          q1 = 1.0/(255+255+255);
-                       }else{
-                           q1 = (means[k][0]+1)/(means[k][0]+means[k][1]+means[k][2]+1);
-                       }
-                        s1 = Math.abs(p1*Math.log(p1/q1));
-                        downS1 = Math.abs(q1*Math.log(q1/p1));
+                           double q1;
+                           if(means[k][0] == 0){
+                              q1 = 1.0/(255+255+255);
+                           }else{
+                               q1 = (means[k][0]+1)/(means[k][0]+means[k][1]+means[k][2]+1);
+                           }
+                            s1 = Math.abs(p1*Math.log(p1/q1));
+                            downS1 = Math.abs(q1*Math.log(q1/p1));
 
-                        double p2;
-                       if(kArray[i].get(j).getC2()==0){
-                           p2 = 1.0/(255+255+255);
-                       }else{
-                           p2 = (double)(kArray[i].get(j).getC2())/(kArray[i].get(j).getSum());
-                       }
-                        double q2;
-                        if(means[k][1]==0){
-                           q2 = 1.0/(255+255+255);
-                        }else{
-                           q2 = (means[k][1])/(means[k][0]+means[k][1]+means[k][2]);
-                        }
-                        s2 = Math.abs(p2*Math.log(p2/q2));
-                        downS2 = Math.abs(q2*Math.log(q2/p2));
-
-                        double p3;
-                        if(kArray[i].get(j).getC3()==0){
-                            p3 = 1.0/(255+255+255);
-                        }else{
-                            p3 = (double)(kArray[i].get(j).getC3())/(kArray[i].get(j).getSum());
-                       }
-                        double q3;
-                        if(means[k][2]==0){
-                            q3 = 1.0/(255+255+255);
-                        }else{
-                           q3 = (double)(means[k][2])/(means[k][0]+means[k][1]+means[k][2]);
-                        }
-                        s3 = Math.abs(p3*Math.log(p3/q3));
-                       downS3 = Math.abs(q3*Math.log(q3/p3));
-                       Result = (s1 + s2 + s3 + downS1 +downS2 + downS3)*100000000;
-                            if(Result< minAveDiff){
-                                minAveDiff = Result;
-                                index = k;
+                            double p2;
+                           if(kArray[i].get(j).getC2()==0){
+                               p2 = 1.0/(255+255+255);
+                           }else{
+                               p2 = (double)(kArray[i].get(j).getC2())/(kArray[i].get(j).getSum());
+                           }
+                            double q2;
+                            if(means[k][1]==0){
+                               q2 = 1.0/(255+255+255);
+                            }else{
+                               q2 = (means[k][1])/(means[k][0]+means[k][1]+means[k][2]);
                             }
-                        }
+                            s2 = Math.abs(p2*Math.log(p2/q2));
+                            downS2 = Math.abs(q2*Math.log(q2/p2));
+
+                            double p3;
+                            if(kArray[i].get(j).getC3()==0){
+                                p3 = 1.0/(255+255+255);
+                            }else{
+                                p3 = (kArray[i].get(j).getC3())/(kArray[i].get(j).getSum());
+                           }
+                            double q3;
+                            if(means[k][2]==0){
+                                q3 = 1.0/(255+255+255);
+                            }else{
+                               q3 = (means[k][2])/(means[k][0]+means[k][1]+means[k][2]);
+                            }
+                            s3 = Math.abs(p3*Math.log(p3/q3));
+                           downS3 = Math.abs(q3*Math.log(q3/p3));
+                           Result = (s1 + s2 + s3 + downS1 +downS2 + downS3)*100000000;
+                                if(Result< minAveDiff){
+                                    minAveDiff = Result;
+                                    index = k;
+                                }
+                            }
 
                         if(index != kArray[i].get(j).getCluster()){
                              changes = true;
@@ -3750,27 +3580,12 @@ public class ImagePimp extends JFrame{
             for (int column = 0; column < My_column; column++){
                 float r = 0, g = 0, b =0;
                 r = (float)TRGB[1][column][row]/(TRGB[1][column][row]+TRGB[2][column][row]+TRGB[3][column][row]) ;
-		g = (float)TRGB[2][column][row]/(TRGB[1][column][row]+TRGB[2][column][row]+TRGB[3][column][row]) ;
-		b = (float)TRGB[3][column][row]/(TRGB[1][column][row]+TRGB[2][column][row]+TRGB[3][column][row]) ;
-                double top =0, down =0, h =0;
-              if(b <= g) {
-                  top = 0.5*( 2*r-g-b );
-                  down =Math.pow((r-g), 2)+(r-b)*(g-b);
-                  h = Math.acos(top/Math.pow(down,0.5));
-              }
-               else
-                 if(b > g){
-                   top = 0.5*( 2*r-g-b );
-                  down =Math.pow((r-g), 2)+(r-b)*(g-b);
-                  h = 2*Math.PI - Math.acos(top/Math.pow(down,0.5));
-              }
-                int H = (int)(h*180.0/Math.PI);
+                g = (float)TRGB[2][column][row]/(TRGB[1][column][row]+TRGB[2][column][row]+TRGB[3][column][row]) ;
+                b = (float)TRGB[3][column][row]/(TRGB[1][column][row]+TRGB[2][column][row]+TRGB[3][column][row]) ;
                 int S = (int)(100*(1-3*(Math.min(b, Math.min(r, g)))));
-                int I = (int)((TRGB[1][column][row] + TRGB[2][column][row] +TRGB[3][column][row])/3.0);
                 int R = (int)(S*255.0/100.0);
                 pixel[i] = getTRGB(255,R,R,R);
-                 i++;
-
+                i++;
             }
         }
 
@@ -3778,39 +3593,22 @@ public class ImagePimp extends JFrame{
 
 	//return pixelsArrayToImage(TRGBArrayToPixelsArray(ReturnTRGB, imageInDimension), imageInDimension);
     }
-        protected Image MyRGBtoHSI_I(Image imageIn){
-	Dimension imageInDimension = getImageDimension(imageIn);
-	int TRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
+
+    protected Image MyRGBtoHSI_I(Image imageIn){
+	    Dimension imageInDimension = getImageDimension(imageIn);
+	    int TRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
         //int ReturnTRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
         int pixel[] = imageToPixelsArray(imageIn);
         int My_row  =(int)imageInDimension.getHeight();   // row number
         int My_column =(int)imageInDimension.getWidth();  // column number
-         int i = 0;
+        int i = 0;
         //  make the color image to gray and caculate number in each pixel
         for (int row = 0; row < My_row; row++){
             for (int column = 0; column < My_column; column++){
-                float r = 0, g = 0, b =0;
-                r = (float)TRGB[1][column][row]/(TRGB[1][column][row]+TRGB[2][column][row]+TRGB[3][column][row]) ;
-		g = (float)TRGB[2][column][row]/(TRGB[1][column][row]+TRGB[2][column][row]+TRGB[3][column][row]) ;
-		b = (float)TRGB[3][column][row]/(TRGB[1][column][row]+TRGB[2][column][row]+TRGB[3][column][row]) ;
-                double top =0, down =0, h =0;
-              if(b <= g) {
-                  top = 0.5*( 2*r-g-b );
-                  down =Math.pow((r-g), 2)+(r-b)*(g-b);
-                  h = Math.acos(top/Math.pow(down,0.5));
-              }
-               else
-                 if(b > g){
-                   top = 0.5*( 2*r-g-b );
-                  down =Math.pow((r-g), 2)+(r-b)*(g-b);
-                  h = 2*Math.PI - Math.acos(top/Math.pow(down,0.5));
-              }
-                int H = (int)(h*180.0/Math.PI);
-                int S = (int)(100*(1-3*(Math.min(b, Math.min(r, g)))));
-                int I = (int)((TRGB[1][column][row] + TRGB[2][column][row] +TRGB[3][column][row])/3.0);
+                int I = (int)((TRGB[1][column][row] + TRGB[2][column][row] +
+                    TRGB[3][column][row])/3.0);
                 pixel[i] = getTRGB(255,I,I,I);
-                 i++;
-
+                i++;
             }
         }
 
@@ -3818,13 +3616,14 @@ public class ImagePimp extends JFrame{
 
 	//return pixelsArrayToImage(TRGBArrayToPixelsArray(ReturnTRGB, imageInDimension), imageInDimension);
     }
+
     protected Image My_contrastStretch(Image imageIn){
 	Dimension imageInDimension = getImageDimension(imageIn);
 	int TRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
         int My_row  =(int)imageInDimension.getHeight();   // row number
         int My_column =(int)imageInDimension.getWidth();  // column number
-        int sLow = (int) My_row*My_column/100;         // slow = 10%
-        int sHight= (int) My_row*My_column*90/100;     // shight = 90 %
+        int sLow =  My_row*My_column/100;         // slow = 10%
+        int sHight=  My_row*My_column*90/100;     // shight = 90 %
         int aLow = 0;
         int aHight = 255;
         int h[] = new int[256]; // install histogram
@@ -3879,31 +3678,6 @@ public class ImagePimp extends JFrame{
 	return pixelsArrayToImage(TRGBArrayToPixelsArray(TRGB, imageInDimension), imageInDimension);
     }
       protected Image MyKmeansSegmentation(Image imageIn, int k){
-         class ClusterIndex{
-            private int R, G, B, cluster, index_x,index_y;
-            public ClusterIndex(int red, int Green, int Blue, int c, int x, int y){
-                R = red;
-                G = Green;
-                B = Blue;
-                cluster = c;
-                index_x = x;
-                index_y = y;
-            }
-            public int getR(){ return R; }
-            public int getG(){ return G; }
-            public int getB(){ return B; }
-            public int getCluster(){ return cluster; }
-            public ClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex_x(){
-                return index_x;
-            }
-            public int getIndex_y(){
-                return index_y;
-            }
-        }
 
         Dimension imageInDimension = getImageDimension(imageIn);
 	int TRGB[][][] = pixelArrayToTRGBArray(imageToPixelsArray(imageIn), imageInDimension);
@@ -3913,8 +3687,8 @@ public class ImagePimp extends JFrame{
         ArrayList<ClusterIndex>[] kArray = new ArrayList[k];
         double[][] numberCluster = new double[k][3];
       int[] compare = new int[k];
-       for(int row = 1; row <= (int)(My_row); row++){
-           for(int colum =1; colum<= (int)(My_column); colum++){
+       for(int row = 1; row <= My_row; row++){
+           for(int colum =1; colum<= My_column; colum++){
                         for(int seg = 0; seg < k; seg++){
                        if(kArray[(colum*row)%k] == null)
                              kArray[(colum*row)%k] = new ArrayList<ClusterIndex>();
@@ -4052,18 +3826,12 @@ public class ImagePimp extends JFrame{
            public int XpCent;
            public int YpCent;
            public double physDist;
-           public double AvgPhysDist;
 
            public double siRDist;
            public double siGDist;
            public double siBDist;
-           public double AvgSiRDist;
-           public double AvgSiGDist;
-           public double AvgSiBDist;
            public double siTotalDist;
 
-           public int PrvXpCent;
-           public int PrvYpCent;
            public int XSum;
            public int YSum;
 
@@ -4159,121 +3927,131 @@ public class ImagePimp extends JFrame{
        }
 
 
-      for(int t = 1; t<= iteration ; t++){           // iteration
-          for(int count = 1; count <= m;  count++){        // k is the number of the ants
-              // creating k different random cluster centers
-              if(t == 1){
-                 for(int i = 0 ; i < NumOfClusters ; i++ ){
-                       int row = r.nextInt(My_row);
-                       int colum = r.nextInt(My_column);
-                       clusCenter[i].Rcenter = TRGB[1][colum][row];
-                       clusCenter[i].Gcenter = TRGB[2][colum][row];
-                       clusCenter[i].Bcenter = TRGB[3][colum][row];
+    for(int t = 1; t<= iteration ; t++){           // iteration
+        for(int count = 1; count <= m;  count++){        // k is the number of the ants
+            // creating k different random cluster centers
+            if(t == 1){
+                for(int i = 0 ; i < NumOfClusters ; i++ ){
+                    int row = r.nextInt(My_row);
+                    int colum = r.nextInt(My_column);
+                    clusCenter[i].Rcenter = TRGB[1][colum][row];
+                    clusCenter[i].Gcenter = TRGB[2][colum][row];
+                    clusCenter[i].Bcenter = TRGB[3][colum][row];
 
-               //        System.out.println(i + "t = 1, R = " + clusCenter[i].Rcenter);
-               //        System.out.println("t = 1, G = " + clusCenter[i].Gcenter);
-               //        System.out.println("t = 1, B = " + clusCenter[i].Bcenter);
+                    // System.out.println(i + "t = 1, R = " + clusCenter[i].Rcenter);
+                    // System.out.println("t = 1, G = " + clusCenter[i].Gcenter);
+                    // System.out.println("t = 1, B = " + clusCenter[i].Bcenter);
 
-                 }
-              }// if (t == 1)
+                }
+            }// if (t == 1)
 
-              // heuristic information
-           int e =1;
+            // heuristic information
+            int e =1;
             int num = 0;
-            while (e == 1)// repeat until ant k has completed a solution
-            {
-
-            for(int i = 0; i < NumOfClusters; i++){
-                for(int row = 0 ; row < My_row; row++){
-                    for(int column = 0; column < My_column; column++){
-                        int red = TRGB[1][column][row];
-                        int green = TRGB[2][column][row];
-                        int blue = TRGB[3][column][row];
-                        double a1 = (red - clusCenter[i].Rcenter);
-                        double b1 = (green - clusCenter[i].Gcenter);
-                        double c1 = (blue - clusCenter[i].Bcenter);
-                        if((a1 == 0)&&(b1 == 0)&&(c1 == 0)){
-                            clusCenter[i].N[column][row] = 1000000;
-                        }else{
-                            double moce = kapa;
-                            double temp = Math.pow(a1,2) + Math.pow(b1,2) + Math.pow(c1, 2);
-                            double deno = Math.pow(temp, 0.5);
-                            clusCenter[i].N[column][row] =  moce/deno;
+            // repeat until ant k has completed a solution
+            while (e == 1) {
+                for(int i = 0; i < NumOfClusters; i++){
+                    for(int row = 0 ; row < My_row; row++){
+                        for(int column = 0; column < My_column; column++){
+                            int red = TRGB[1][column][row];
+                            int green = TRGB[2][column][row];
+                            int blue = TRGB[3][column][row];
+                            double a1 = (red - clusCenter[i].Rcenter);
+                            double b1 = (green - clusCenter[i].Gcenter);
+                            double c1 = (blue - clusCenter[i].Bcenter);
+                            if((a1 == 0)&&(b1 == 0)&&(c1 == 0)){
+                                clusCenter[i].N[column][row] = 1000000;
+                            }else{
+                                double moce = kapa;
+                                double temp = 
+                                    Math.pow(a1,2) + Math.pow(b1,2) + 
+                                    Math.pow(c1, 2);
+                                double deno = Math.pow(temp, 0.5);
+                                clusCenter[i].N[column][row] =  moce/deno;
+                            }
+                            // System.out.println(clusCenter[i].N[column][row]);
                         }
-                   //    System.out.println(clusCenter[i].N[column][row]);
                     }
                 }
-            }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-              Y[0] = 0;
+                Y[0] = 0;
+                double sum;
+                for(int row = 0 ; row < My_row; row++){
+                    for(int column = 0 ; column < My_column; column++){
+                        sum = 0;
+                        for(int i = 0; i < NumOfClusters ; i++){
+                            double first = Math.exp(
+                                (Math.log(clusCenter[i].T[column][row]))*alpha);
+                            double second = Math.exp(
+                                (Math.log(clusCenter[i].N[column][row]))*beta);
+                            sum += first*second;
+                        }
 
-                  double sum;
-                  for(int row = 0 ; row < My_row; row++){
-                      for(int column = 0 ; column < My_column; column++){
-                          sum = 0;
-                          for(int i = 0; i < NumOfClusters ; i++){
-                              double first = Math.exp((Math.log(clusCenter[i].T[column][row]))*alpha);
-                              double second = Math.exp((Math.log(clusCenter[i].N[column][row]))*beta);
-                              sum += first*second;
-                          }
+                        for(int i = 0; i < NumOfClusters ; i++){
+                            double first = Math.exp(
+                                (Math.log(clusCenter[i].T[column][row]))*alpha);
+                            double second = Math.exp(
+                                (Math.log(clusCenter[i].N[column][row]))*beta);
+                            clusCenter[i].P[column][row] = (first*second)/sum;
+                        }
+                    }
+                }
+                // clustering according to the prbabilities calculated abouve
+                // first, we define a set of numbers sorted from 0 to 1 as Y[]
+                // so that Y[i] - Y[i -1] = clusCenter[i].P[x]
+                double tttp = -1;
+                double pppp = 0;
+                for(int row = 0; row < My_row; row++){
+                    for(int column = 0 ; column < My_column ; column++){
+                        for(int ii = 1 ; ii <= NumOfClusters; ii++){
+                            Y[ii] = 
+                                clusCenter[ii - 1].P[column][row] + Y[ii-1];
+                            pppp = clusCenter[ii - 1].P[column][row];
+                            clusCenter[ii - 1].member[column][row] = 0;
+                            // System.out.println(" Y  " + Y[ii]);
+                            if(Math.abs(pppp) > tttp){
+                                  tttp = pppp;
+                            }
 
-                          for(int i = 0; i < NumOfClusters ; i++){
-                              double first = Math.exp((Math.log(clusCenter[i].T[column][row]))*alpha);
-                              double second = Math.exp((Math.log(clusCenter[i].N[column][row]))*beta);
-                              clusCenter[i].P[column][row] = (first*second)/sum;
-                          }
-                      }
-                  }
-                  // clustering according to the prbabilities calculated abouve
-                  // first, we define a set of numbers sorted from 0 to 1 as Y[]
-                  // so that Y[i] - Y[i -1] = clusCenter[i].P[x]
-                  double tttp = -1;
-                  double pppp = 0;
-                  int index = -1;
-                  for(int row = 0; row < My_row; row++){
-                      for(int column = 0 ; column < My_column ; column++){
-                          for(int ii = 1 ; ii <= NumOfClusters; ii++){
-                              Y[ii] = clusCenter[ii - 1].P[column][row] + Y[ii-1];
-                              pppp = clusCenter[ii - 1].P[column][row];
-                              clusCenter[ii - 1].member[column][row] = 0;
-                           //   System.out.println(" Y  " + Y[ii]);
-                              if(Math.abs(pppp) > tttp){
-                                    tttp = pppp;
-                                    index = ii - 1;
-                              }
+                        }
+                        // clusCenter[index].member[column][row] = 1;
 
-                          }
-                    //     clusCenter[index].member[column][row] = 1;
+                        // *FIXME* Nonesense! 
+                         double rr = r.nextInt(100000)/100000.0;
+                         /* rr is a random floating point value in the
+                          * range[0,1)(inlcuding 0 ,not inlcuding 1) Note we
+                          * numst convert rand() and/or RAND_Max + 1 to
+                          * floating point values to avoid integer division.
+                          * In addition, sean scanlon pointed out the
+                          * possbility that Random_max may be the largest
+                          * positive integer the architecture can represent, so
+                          * (Rand_max +1) may result in an overflow, or more
+                          * likely the value will end up being the largest
+                          * negative interger the architecture can represent,
+                          * so to avoid this we convert Rand_max and 1 to
+                          * double before adding.
+                          */
+                       for(int i = 1; i <= NumOfClusters; i++ ){   // loop for comparing n intervals
+                                                                   // j: index of compared interval
+                              if(rr >= Y[i - 1] && rr < Y[i]){
+                             //     System.out.println("memeber cluster " + (i - 1));
+                                clusCenter[i-1].member[column][row] = 1;
+                              break;
+                             }
+                        }
+                     //
 
-                           double rr = r.nextInt(100000)/100000.0;
-                           /* rr is a random floating point value in the range[0,1)(inlcuding 0 ,not inlcuding 1)
-                            * Note we numst convert rand() and/or RAND_Max + 1 to floating point values to avoid integer division.
-                            * In addition, sean scanlon pointed out the possbility
-                            * that Random_max may be the largest positive integer the architecture can represent, so (Rand_max +1) may result in an overflow,
-                            * or more likely the value will end up being the largest negative interger the architecture can represent, so to avoid this we
-                            * convert Rand_max and 1 to double before adding.
-                            */
-                         for(int i = 1; i <= NumOfClusters; i++ ){   // loop for comparing n intervals
-                                                                     // j: index of compared interval
-                                if(rr >= Y[i - 1] && rr < Y[i]){
-                               //     System.out.println("memeber cluster " + (i - 1));
-                                  clusCenter[i-1].member[column][row] = 1;
-                                break;
-                               }
-                          }
-                       //
-
-                     }
-                  }
-                  // calculating cluster centers
-                  for(int ii = 0; ii < NumOfClusters; ii++ ){
-                      clusCenter[ii].XSum = 0;
-                      clusCenter[ii].YSum = 0;
-                      clusCenter[ii].Rsum = 0;
-                      clusCenter[ii].Gsum = 0;
-                      clusCenter[ii].Bsum = 0;
-                      clusCenter[ii].pix = 1;
-                  }
+                   }
+                }
+                // calculating cluster centers
+                for(int ii = 0; ii < NumOfClusters; ii++ ){
+                    clusCenter[ii].XSum = 0;
+                    clusCenter[ii].YSum = 0;
+                    clusCenter[ii].Rsum = 0;
+                    clusCenter[ii].Gsum = 0;
+                    clusCenter[ii].Bsum = 0;
+                    clusCenter[ii].pix = 1;
+                }
                  for(int i = 0; i < NumOfClusters; i++){
                      for(int row = 0; row < My_row; row++){
                          for(int column = 0; column < My_column; column++){
@@ -4310,9 +4088,10 @@ public class ImagePimp extends JFrame{
                        clusCenter[i].GPrvCenter = clusCenter[i].Gcenter;
                        clusCenter[i].BPrvCenter = clusCenter[i].Bcenter;
 
-                       clusCenter[i].Rcenter = (double)(clusCenter[i].Rsum)/clusCenter[i].pix;
-                       clusCenter[i].Gcenter = (double)(clusCenter[i].Gsum)/clusCenter[i].pix;
-                       clusCenter[i].Bcenter = (double)(clusCenter[i].Bsum)/clusCenter[i].pix;
+                       clusCenter[i].Rcenter = (clusCenter[i].Rsum)/
+                        clusCenter[i].pix;
+                       clusCenter[i].Gcenter = (clusCenter[i].Gsum)/clusCenter[i].pix;
+                       clusCenter[i].Bcenter = (clusCenter[i].Bsum)/clusCenter[i].pix;
 
                        clusCenter[i].XpCent = (int)(clusCenter[i].XSum/clusCenter[i].pix);
                        clusCenter[i].YpCent = (int)(clusCenter[i].YSum/clusCenter[i].pix);
@@ -4403,11 +4182,16 @@ public class ImagePimp extends JFrame{
                               int green = TRGB[2][co][ro];
                               int blue = TRGB[3][co][ro];
 
-                              double t2 = Math.pow((double)(red - a[count].cc[i].Rcenter), 2)
-                                          + Math.pow(green - a[count].cc[i].Gcenter , 2)
-                                          + Math.pow(blue - a[count].cc[i].Bcenter, 2);
-                              double t3 = Math.pow((double)(ro - a[count].cc[i].XpCent),2)
-                                        + Math.pow(co - a[count].cc[i].YpCent , 2);
+                              double t2 = Math.pow(
+                                            (red - a[count].cc[i].Rcenter), 2)
+                                          +Math.pow(
+                                            green - a[count].cc[i].Gcenter , 2)
+                                          +Math.pow(
+                                            blue - a[count].cc[i].Bcenter, 2);
+                              double t3 = Math.pow(
+                                            (ro - a[count].cc[i].XpCent),2)
+                                        + Math.pow(
+                                            co - a[count].cc[i].YpCent, 2);
                               a[count].cc[i].colorDist += Math.pow(t2, 0.5);
                               a[count].cc[i].physDist  += Math.pow(t3, 0.5);
 
@@ -4418,18 +4202,9 @@ public class ImagePimp extends JFrame{
                       }
                   }
               }
-              for(int i = 0; i < NumOfClusters ; i++){
-                  a[count].cc[i].AvgColorDist = (double)(a[count].cc[i].colorDist)/a[count].cc[i].pix ;
-                  a[count].cc[i].AvgPhysDist = (int)((double)(a[count].cc[i].physDist)/a[count].cc[i].pix);
-                  a[count].cc[i].AvgSiBDist = (double)(a[count].cc[i].siBDist)/a[count].cc[i].pix ;
-                  a[count].cc[i].AvgSiGDist = (double)(a[count].cc[i].siGDist)/a[count].cc[i].pix ;
-                  a[count].cc[i].AvgSiRDist = (double)(a[count].cc[i].siRDist)/a[count].cc[i].pix ;
-              }
 
               for(int row = 0 ; row < My_row ; row++){
                   for(int column = 0 ; column < My_column ; column++){
-                      double minAveDiff = Float.MAX_VALUE ;
-                      int index = -1;
                       for(int j = 0; j < NumOfClusters ; j++){
                           if(a[count].cc[j].member[column][row] == 1){
                               double s1 = 0, s2 = 0, s3 = 0, result = 0,downS1, downS2, downS3 ;
@@ -4513,7 +4288,7 @@ public class ImagePimp extends JFrame{
 
               double temp2 = a[count].Arr[0];
               a[count].Arr[0] = a[count].Arr[(int)(temp)];
-              a[count].Arr[(int)(temp)] = (double)(temp2);
+              a[count].Arr[(int)(temp)] = temp2;
 
               temp = 1;
               a[count].maxdist2 = a[count].Arr[1];
@@ -4526,7 +4301,7 @@ public class ImagePimp extends JFrame{
               if(NumOfClusters > 2){
                    temp2 = a[count].Arr[1];
                   a[count].Arr[1] = a[count].Arr[(int)(temp)];
-                  a[count].Arr[(int)(temp)] = (double)(temp2);
+                  a[count].Arr[(int)(temp)] = temp2;
 
                   temp = 2;
                   for(int i = 2; i < NumOfClusters; i++){
@@ -4625,9 +4400,6 @@ public class ImagePimp extends JFrame{
           double min = a[1].maxdist;
           double min2 = a[1].maxdist2;
           double min3 = a[1].maxdist3;
-          double Pmin = a[1].maxPhysdist;
-          double Pmin2 = a[1].maxPhysdist2;
-          double pmin3 = a[1].maxPhysdist3;
 
           double Smin = a[1].maxSidist;
           double Smin2 = a[1].maxSidist2;
@@ -4647,17 +4419,17 @@ public class ImagePimp extends JFrame{
                   temp = i;              // and temp is providing a bettwer solution
               }
           }
-          a[(int)(temp)].vote++;
+          a[temp].vote++;
           if(comment == 0 ){  // vote for the second best twoo
               if(temp == m){
                   temp1 = 1;
               }else{
-                  temp1 = (int)(temp +1);
+                  temp1 = temp +1;
               }
               min = a[temp1].maxdist;
 
               for(int i  = 1; i<= m ; i++){         // is is the number of the ants
-                  if(i != (int)(temp) && a[i].maxdist < min){
+                  if(i != temp && a[i].maxdist < min){
                       min = a[i].maxdist;
                       temp1 = i;
                   }
@@ -4672,17 +4444,17 @@ public class ImagePimp extends JFrame{
                   temp = i;   /// ant temp is providing a better solution
               }
           }
-          a[(int)(temp)].vote ++;
+          a[temp].vote ++;
 
           if(comment == 0){// vote for the second best too.
               if(temp == m){
                   temp1 = 1;
               }else{
-                  temp1 = (int)(temp) +1;
+                  temp1 = temp +1;
               }
               max =a[temp1].min;
               for(int i = 1 ; i<= m; i++){  // i is the number of the ants
-                  if(i != (int)(temp) && a[i].min > max){
+                  if(i != temp && a[i].min > max){
                       max = a[i].min;
                       temp1 = i; // ant temp is providing a better solution
                   }
@@ -4697,7 +4469,7 @@ public class ImagePimp extends JFrame{
                   temp = i;// ant temp is providing a better solution
               }
           }
-          a[(int)(temp)].vote ++;
+          a[temp].vote ++;
           if(comment == 0){ // vote for the second best too
               if(temp == m){
                   temp1 = 1;
@@ -4720,7 +4492,7 @@ public class ImagePimp extends JFrame{
                   temp = i;
               }
           }
-          a[(int)(temp)].vote++;
+          a[temp].vote++;
           if(comment == 0){
               if(temp == m){
                   temp1 = 1;
@@ -4743,7 +4515,7 @@ public class ImagePimp extends JFrame{
                   temp = i;// ant temp is providing a better solution
               }
           }
-          a[(int)(temp)].vote ++;
+          a[temp].vote ++;
           if(comment == 0){// vote for the second best too
               if(temp == m){
                   temp1 = 1;
@@ -4766,7 +4538,7 @@ public class ImagePimp extends JFrame{
                   temp = i; // ant temp is providing a better solution
               }
           }
-          a[(int)(temp)].vote ++;
+          a[temp].vote ++;
           if(comment == 0){
               if(temp == m){
                   temp1 = 1;
@@ -4799,7 +4571,7 @@ public class ImagePimp extends JFrame{
                       clusCenter[i].DeltaT[column][row] = 0;
                       if(a[temp].cc[i].member[column][row] == 1){
                           clusCenter[i].DeltaT[column][row] +=
-                                  (double)(Q*a[(int)(temp)].min)/((a[(int)(temp)].cc[i].AvgColorDist));
+                            (Q*a[temp].min)/((a[temp].cc[i].AvgColorDist));
                       }
                   }
               }
@@ -4828,7 +4600,7 @@ public class ImagePimp extends JFrame{
 
 
           for(int i = 0; i < NumOfClusters ; i++){
-              copy[i] = a[(int)(temp)].cc[i].Rcenter;
+              copy[i] = a[temp].cc[i].Rcenter;
           }
           for(int i = 0; i < NumOfClusters; i ++){
               for(int j = i+1; j < NumOfClusters ; j++){
@@ -4844,9 +4616,9 @@ public class ImagePimp extends JFrame{
               for(int row = 0; row < My_row; row++){
                   for(int column = 0; column < My_column ; column ++){
 
-                      if(a[(int)(temp)].cc[i].member[column][row] == 1){
+                      if(a[temp].cc[i].member[column][row] == 1){
                           for(int j = 0; j < NumOfClusters ; j++){
-                              if(a[(int)(temp)].cc[i].Rcenter == copy[j]){
+                              if(a[temp].cc[i].Rcenter == copy[j]){
                                   temp1 = j;
                               }
                           }
@@ -5164,7 +4936,6 @@ public class ImagePimp extends JFrame{
 
 
     }
-        int throshold = (int)sum/(int)((imageInDimension.getHeight()-3)*(imageInDimension.getWidth()-3));
         System.out.println(max);
         for(int i = 4;  i<=imageInDimension.getHeight()-4; i++){
             for(int j = 4; j <= imageInDimension.getWidth()-4; j++ ){
@@ -5249,9 +5020,9 @@ public class ImagePimp extends JFrame{
                    for(int k = 0; k< My_column ; k++){
                     weight = Math.pow(u[k][j][i], 2);
                     sumWeight += weight;
-                    sumC1 += weight*((double)TRGB[1][k][j]);
-                    sumC2 += weight*((double)TRGB[2][k][j]);
-                    sumC3 += weight*((double)TRGB[3][k][j]);
+                    sumC1 += weight*(TRGB[1][k][j]);
+                    sumC2 += weight*(TRGB[2][k][j]);
+                    sumC3 += weight*(TRGB[3][k][j]);
 
                //    System.out.println(" weight = "+ weight);
               //      System.out.print("R "+ TRGB[1][k][j]+ " " +"G= "+  " " + TRGB[2][k][j] + " B=  " + TRGB[3][k][j]);
@@ -5423,9 +5194,9 @@ public class ImagePimp extends JFrame{
                    for(int k = 0; k< My_column -1; k++){
                     weight = Math.pow(u2[k][j][i], 2);
                     sumWeight += weight;
-                    sumC1 += weight*((double)TRGB[1][k][j]);
-                    sumC2 += weight*((double)TRGB[2][k][j]);
-                    sumC3 += weight*((double)TRGB[3][k][j]);
+                    sumC1 += weight*(TRGB[1][k][j]);
+                    sumC2 += weight*(TRGB[2][k][j]);
+                    sumC3 += weight*(TRGB[3][k][j]);
 
                //    System.out.println(" weight = "+ weight);
               //      System.out.print("R "+ TRGB[1][k][j]+ " " +"G= "+  " " + TRGB[2][k][j] + " B=  " + TRGB[3][k][j]);
@@ -5638,7 +5409,9 @@ public class ImagePimp extends JFrame{
 	return pixels;
     }
 
-    protected static int[] TRGBArrayToPixelsArray(int[][][] TRGB, Dimension imageInDimension){
+    // *FIXME* Don't need to dimensions here, we can figure it out.
+    protected static int[] TRGBArrayToPixelsArray(int[][][] TRGB, 
+            Dimension imageInDimension){
         int row_length=TRGB[0][0].length;
         int col_length=TRGB[0].length;
         int imagePixelLength = (col_length * row_length);
@@ -5838,7 +5611,7 @@ public class ImagePimp extends JFrame{
     }
 
     public static void main(String args[]){
-	ImagePimp app = new ImagePimp();
+	    new ImagePimp();
     }
 }
 
@@ -5873,7 +5646,7 @@ class MouseInputAdapter implements MouseInputListener
                 }
             }
 
-            if(e.getID() == e.MOUSE_EXITED){
+            if(e.getID() == MouseEvent.MOUSE_EXITED){
                 red.setText("");
                 green.setText("");
                 blue.setText("");
@@ -5913,7 +5686,7 @@ class MouseInputAdapter implements MouseInputListener
 }
 
 class ImageFrame extends JInternalFrame{
-    private File imageFile;
+    private static final long serialVersionUID= 4156181266374294L;
     private ImagePanel imagePanel;
 
     public ImageFrame(File imageFile){
@@ -5925,7 +5698,6 @@ class ImageFrame extends JInternalFrame{
         getContentPane().add(imagePanel);
 
         // Set the internal image file to the passed arguement
-        this.imageFile = imageFile;
         this.setTitle(imageFile.getName());
         // Initialize and show the internal frame window
         setSize(imagePanel.getImageIcon().getIconWidth(), imagePanel.getImageIcon().getIconHeight());
@@ -5941,9 +5713,6 @@ class ImageFrame extends JInternalFrame{
         imagePanel = new ImagePanel(image);
         getContentPane().add(imagePanel);
 
-        // Set the internal image file to a default name
-        imageFile = null;
-
         // Initialize and show the internal frame window
         setSize(imagePanel.getImageIcon().getIconWidth(), imagePanel.getImageIcon().getIconHeight());
         show();
@@ -5956,6 +5725,7 @@ class ImageFrame extends JInternalFrame{
     }
 
     private class ImagePanel extends JPanel{
+        private static final long serialVersionUID= 4156181325374294L;
         private ImageIcon imageIcon;
 
         public ImagePanel(File imageFile){
