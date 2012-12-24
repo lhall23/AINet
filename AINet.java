@@ -887,7 +887,7 @@ public class AINet {
     }
 
     // *KILLME*
-    public AINet(Image imageIn) throws Exception {
+    public AINet(Image imageIn) {
     //Pass this value downstream. We'd like to deprecate this constructor
     this(ImagePimp.pixelsArrayToTRGBArray(
             ImagePimp.imageToPixelsArray(imageIn), 
@@ -906,7 +906,7 @@ public class AINet {
     // This is currently stupidly inefficient, but these two legacy
     // constructors will go away as soon as we can actually test things
     // *KILLME*
-    public AINet(int[][][] TRGB) throws Exception {
+    public AINet(int[][][] TRGB) {
         this(TRGBto2dArray(TRGB), 
             get_training_set(new File(DEFAULT_TRAINING_FILE)));     
     }

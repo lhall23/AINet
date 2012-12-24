@@ -1,3 +1,9 @@
+ImagePimp: 
+	Disable transformations when no image is loaded
+	Setup standard interface for transformations and their configs so that they
+		can be run from outside ImagePimp and also loaded into menus generically.
+
+
 Move ImagePimp methods out of the AINet class
 Move image methods out of ImagePimp class
 Convert AINet entirely to ArrayLists so that sparse arrays and sorting can be

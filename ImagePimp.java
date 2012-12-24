@@ -13,6 +13,7 @@ import java.awt.image.Kernel;
 import java.awt.image.ConvolveOp;
 import java.awt.image.PixelGrabber;
 import java.awt.image.MemoryImageSource;
+import java.beans.PropertyVetoException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,255 +30,260 @@ public class ImagePimp extends JFrame{
     private static final long serialVersionUID = 2123853712905017011L;
 
     public ImagePimp(){
-	super("ImagePimp");
-	initializeFrameWindow();
+        super("ImagePimp");
+        initializeFrameWindow();
     }
 
     private void initializeFrameWindow(){
         contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
-	desktopPane = new JDesktopPane();
+	    desktopPane = new JDesktopPane();
         contentPane.add(desktopPane);
         JMenuBar menuBar = new JMenuBar();
+
+
+        /*
+         * File menu
+         * Only Open, Save As, and Close are currently implemented
+         */
 
         JMenu fileMenu = new JMenu("File");
     	JMenuItem newFileMenuItem = new JMenuItem("New");
         JMenuItem openFileMenuItem = new JMenuItem("Open");
-	JMenuItem saveFileMenuItem = new JMenuItem("Save");
-	JMenuItem saveAsFileMenuItem = new JMenuItem("Save As...");
-	JMenuItem closeFileMenuItem = new JMenuItem("Close");
+	    JMenuItem saveFileMenuItem = new JMenuItem("Save");
+	    JMenuItem saveAsFileMenuItem = new JMenuItem("Save As...");
+	    JMenuItem closeFileMenuItem = new JMenuItem("Close");
 
         newFileMenuItem.setEnabled(false);
-	saveFileMenuItem.setEnabled(false);
 
-	openFileMenuItem.addActionListener(new ActionListener(){
+	    openFileMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-		JFileChooser fileChooser = new JFileChooser(new File("./images"));
-		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-		if (fileChooser.showOpenDialog(ImagePimp.this) != JFileChooser.CANCEL_OPTION){
-                    ImageFrame imageFrame=new ImageFrame(fileChooser.getSelectedFile());
+		        JFileChooser fileChooser = 
+                    new JFileChooser(new File("./images"));
+                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                if (fileChooser.showOpenDialog(ImagePimp.this) != 
+                        JFileChooser.CANCEL_OPTION){
+                    ImageFrame imageFrame=
+                        new ImageFrame(fileChooser.getSelectedFile());
                     desktopPane.add(imageFrame);
-                    imageFrame.addMouseMotionListener(new MouseInputAdapter());
-                    imageFrame.addMouseListener(new MouseInputAdapter());
-                    imageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                    try{imageFrame.setSelected(true);}
-                    catch(Exception e){}
+                    imageFrame.display(); 
                 }
             }
         });
+
+	    saveFileMenuItem.setEnabled(false);
 
         saveAsFileMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
                 JFileChooser fileChooser = new JFileChooser();
                 fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                if (fileChooser.showSaveDialog(ImagePimp.this) != JFileChooser.CANCEL_OPTION){
+                if (fileChooser.showSaveDialog(ImagePimp.this) != 
+                        JFileChooser.CANCEL_OPTION){
                     String path = fileChooser.getSelectedFile().getPath();
+
+                    //We're saving a jpeg here. There's probably a better way
+                    //to notify the user, though
                     if(!path.contains(".jpg")){
                         if(path.contains(".")){
-                            path = path.substring(0, path.indexOf("."));
+                            path = path.substring(0, path.lastIndexOf("."));
                         }
                         path = path+".jpg";
                     }
-                    ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                    Dimension dimension = getImageDimension(imageFrame.getImage());
-                    BufferedImage bufferedImage = new BufferedImage((int)dimension.getWidth(), (int)dimension.getHeight(), BufferedImage.TYPE_INT_RGB);
+                    ImageFrame imageFrame = 
+                        (ImageFrame) desktopPane.getSelectedFrame();
+                    Dimension dimension = 
+                        getImageDimension(imageFrame.getImage());
+                    BufferedImage bufferedImage = 
+                        new BufferedImage((int)dimension.getWidth(), 
+                            (int)dimension.getHeight(), 
+                            BufferedImage.TYPE_INT_RGB);
                     Graphics2D g = bufferedImage.createGraphics();
                     g.drawImage(imageFrame.getImage(), null, null);
                     File outputFile = new File(path);
-                    try {ImageIO.write(bufferedImage, "JPG", outputFile);}
-                    catch (IOException ex) {Logger.getLogger(ImagePimp.class.getName()).log(Level.SEVERE, null, ex);}
-		}
+                    try {
+                        ImageIO.write(bufferedImage, "JPG", outputFile);
+                    }
+                    catch (IOException e) {
+                        Logger.getLogger(
+                            ImagePimp.class.getName()).log(
+                                Level.SEVERE, null, e);
+                    }
+		        }
             }
         });
 
         closeFileMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-		System.exit(0);
+                System.exit(0);
             }
-	});
+	    });
 
-	fileMenu.add(newFileMenuItem);
-	fileMenu.add(openFileMenuItem);
+        fileMenu.add(newFileMenuItem);
+        fileMenu.add(openFileMenuItem);
         fileMenu.add(saveFileMenuItem);
-	fileMenu.add(saveAsFileMenuItem);
-	fileMenu.addSeparator();
-	fileMenu.add(closeFileMenuItem);
+        fileMenu.add(saveAsFileMenuItem);
+        fileMenu.addSeparator();
+        fileMenu.add(closeFileMenuItem);
         menuBar.add(fileMenu);
+
+        /* 
+         * Transformations Menu
+         */
 
         JMenu transformationsMenu = new JMenu("Transformations");
         JMenuItem ainetTransformationsMenuItem = new JMenuItem("Ainet");
-	JMenuItem grayscaleTransformationsMenuItem = new JMenuItem("Grayscale");
-        JMenuItem histogramTransformationMenuItem = new JMenuItem("Histogram");
-	JMenuItem contrastStretchingMenuItem = new JMenuItem("Contrast Stretching");
-        JMenuItem customTransformationsMenuItem = new JMenuItem("Custom...");
-	customTransformationsMenuItem.setEnabled(false);
-        JMenu edgeDetectMenu = new JMenu("Edge Detection");
-        JMenuItem derivativeFilterMenuItem = new JMenuItem("Derivative Fiter");
-        JMenuItem robertsMenuItem = new JMenuItem("Roberts Operator");
-        JMenuItem smoothMenuItem = new JMenuItem("Smooth");
-        edgeDetectMenu.add(derivativeFilterMenuItem);
-        edgeDetectMenu.add(robertsMenuItem);
-        JMenu lineDetectMenu = new JMenu("Line Detection");
-        JMenuItem houghItem = new JMenuItem("Hough Transform");
-        lineDetectMenu.add(houghItem);
-        JMenuItem sharpenMenuItem = new JMenuItem("Sharpen");
-	JMenu segmentationMenu = new JMenu("Segmentation");
+
+	    JMenu rotateSubmenu = new JMenu("Rotate");
+        JMenuItem r90MenuItem = new JMenuItem("90 Degrees");
+        JMenuItem r180MenuItem = new JMenuItem("180 Degrees");
+        JMenuItem r270MenuItem = new JMenuItem("270 Degrees");
+        rotateSubmenu.add(r90MenuItem);
+        rotateSubmenu.add(r180MenuItem);
+        rotateSubmenu.add(r270MenuItem);
+
+	    JMenuItem grayscaleMenuItem = new JMenuItem("Grayscale");
+        JMenuItem histogramMenuItem = 
+            new JMenuItem("Histogram");
+        JMenuItem contrastStretchingMenuItem = 
+            new JMenuItem("Contrast Stretching");
+        
+        JMenu segmentationMenu = new JMenu("Segmentation");
         JMenuItem kMeans = new JMenuItem("K-Means");
         JMenuItem fuzzyCMeans = new JMenuItem("Fuzzy C-Means");
         JMenuItem possibilityCMeans = new JMenuItem("Possibility C-Means");
         segmentationMenu.add(kMeans);
         segmentationMenu.add(fuzzyCMeans);
         segmentationMenu.add(possibilityCMeans);
-	JMenu rotateSubmenu = new JMenu("Rotate");
-        JMenuItem nintyMenuItem = new JMenuItem("90 Degrees");
-        JMenuItem oneEightyMenuItem = new JMenuItem("180 Degrees");
-        JMenuItem twoSeventyMenuItem = new JMenuItem("270 Degrees");
-        rotateSubmenu.add(nintyMenuItem);
-        rotateSubmenu.add(oneEightyMenuItem);
-        rotateSubmenu.add(twoSeventyMenuItem);
-        //////////////////////////////////
-        //JMenu My_transformationsMenu = new JMenu("My_Transformations");
-        //JMenuItem My_contrastStretchingMenuItem = new JMenuItem(" Automated Contrast Stretching");
+
+        JMenu edgeDetectMenu = new JMenu("Edge Detection");
+        JMenuItem derivativeFilterMenuItem = 
+            new JMenuItem("Derivative Fiter");
+        JMenuItem robertsMenuItem = new JMenuItem("Roberts Operator");
+        edgeDetectMenu.add(derivativeFilterMenuItem);
+        edgeDetectMenu.add(robertsMenuItem);
+
+        JMenu lineDetectMenu = new JMenu("Line Detection");
+        JMenuItem houghItem = new JMenuItem("Hough Transform");
+        lineDetectMenu.add(houghItem);
+
+        JMenuItem smoothMenuItem = new JMenuItem("Smooth");
+        JMenuItem sharpenMenuItem = new JMenuItem("Sharpen");
+
+        JMenuItem customTransformationsMenuItem = new JMenuItem("Custom...");
+        customTransformationsMenuItem.setEnabled(false);
 
         ainetTransformationsMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-		try{
-                    ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                    AINet ais= new AINet(imageFrame.getImage());
-                    ImageFrame newImageFrame = new ImageFrame(
-                        pixelsArrayToImage(ais.getResults(), 
-                            getImageDimension(imageFrame.getImage()))
-                    );
-                    desktopPane.add(newImageFrame);
-                    newImageFrame.toFront();
-                    newImageFrame.setTitle("Ainet");
-                    newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                    newImageFrame.addMouseListener(new MouseInputAdapter());
-                    newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                    try{newImageFrame.setSelected(true);}
-                    catch(Exception e){}
-                }
-                catch(Exception ex){Logger.getLogger(ImagePimp.class.getName()).log(Level.SEVERE, null, ex);
-}
-            }
-	});
-
-        nintyMenuItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(rotate90(imageFrame.getImage()));
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                AINet ais= new AINet(imageFrame.getImage());
+                ImageFrame newImageFrame = new ImageFrame(
+                    pixelsArrayToImage(ais.getResults(), 
+                        getImageDimension(imageFrame.getImage()))
+                );
                 desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("90 degree Rotation");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-		}
-	});
+                newImageFrame.setTitle("Ainet");
+                newImageFrame.display();
+            }
+    	});
 
-        oneEightyMenuItem.addActionListener(new ActionListener(){
+        // *FIXME* Shouldn't these all be the same method with a different 
+        // argument?
+        r90MenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-		ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(rotate180(imageFrame.getImage()));
-		desktopPane.add(newImageFrame);
-		newImageFrame.toFront();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(rotate90(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
+                newImageFrame.setTitle("90 degree Rotation");
+		    }
+	    });
+
+        r180MenuItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(rotate180(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
                 newImageFrame.setTitle("180 degree Rotation");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-		try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
         });
 
-        twoSeventyMenuItem.addActionListener(new ActionListener(){
+        r270MenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-		ImageFrame newImageFrame = new ImageFrame(rotate270(imageFrame.getImage()));
-		desktopPane.add(newImageFrame);
-		newImageFrame.toFront();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+		        ImageFrame newImageFrame = 
+                    new ImageFrame(rotate270(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
                 newImageFrame.setTitle("270 degree Rotation");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-		try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
-	});
+	    });
 
-        grayscaleTransformationsMenuItem.addActionListener(new ActionListener(){
+        grayscaleMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-		ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-		ImageFrame newImageFrame = new ImageFrame(colorToGrayscale(imageFrame.getImage()));
-		desktopPane.add(newImageFrame);
-		newImageFrame.toFront();
+		        ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(colorToGrayscale(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
                 newImageFrame.setTitle("Gray Scale");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-		try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
-	});
+        });
 
-        histogramTransformationMenuItem.addActionListener(new ActionListener(){
+        histogramMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-		ImageFrame newImageFrame = new ImageFrame(histogram(imageFrame.getImage()));
-		desktopPane.add(newImageFrame);
-		newImageFrame.toFront();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+		        ImageFrame newImageFrame = 
+                    new ImageFrame(histogram(imageFrame.getImage()));
+		        desktopPane.add(newImageFrame);
+                newImageFrame.display();
                 newImageFrame.setTitle("Histogram Equalization");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-		try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
-	});
+	    });
 
         derivativeFilterMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(derivativeFilter(imageFrame.getImage()));
-		desktopPane.add(newImageFrame);
-		newImageFrame.toFront();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(derivativeFilter(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
                 newImageFrame.setTitle("Derivative Filter Edge Detection");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-		try{newImageFrame.setSelected(true);}catch(Exception e){}
             }
 	});
 
         robertsMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(robertsOperator(imageFrame.getImage()));
-		desktopPane.add(newImageFrame);
-		newImageFrame.toFront();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(robertsOperator(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
                 newImageFrame.setTitle("Robert's Operator Edge Detection");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-		try{newImageFrame.setSelected(true);}catch(Exception e){}
             }
-	});
+        });
 
         houghItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(houghTransform(imageFrame.getImage()));
-		desktopPane.add(newImageFrame);
-		newImageFrame.toFront();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(houghTransform(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
                 newImageFrame.setTitle("Hough Line Detection");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-		try{newImageFrame.setSelected(true);}catch(Exception e){}
             }
-	});
+        });
 
         contrastStretchingMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
@@ -289,6 +295,9 @@ public class ImagePimp extends JFrame{
                 menu.setVisible(true);
 
                 menu.setLayout(new GridLayout(1,3));
+
+                // *FIXME* This is bloody disgusting, and needs to be moved 
+                // into the ContrastStretching Object
                 JPanel leftPanel = new JPanel(new GridLayout(8,1));
                 menu.add(leftPanel);
                 JPanel centerPanel = new JPanel(new GridLayout(8,1));
@@ -411,7 +420,7 @@ public class ImagePimp extends JFrame{
                 Blue2slider.setPaintTicks(true);
                 Blue2slider.setPaintLabels(true);
                 Blue2Panel.add(Blue2slider);
-                    JLabel bHighLabel = new JLabel("Blue High                                     ");
+                JLabel bHighLabel = new JLabel("Blue High                                     ");
                 Blue2RightPanel.add(bHighLabel);
 
                 JButton run = new JButton("Run");
@@ -421,16 +430,14 @@ public class ImagePimp extends JFrame{
                         double low = 0.0;
                         double high = 0.0;
                         menu.setVisible(false);
-                        ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                        ImageFrame newImageFrame = new ImageFrame(contrastStretching(imageFrame.getImage(), low, high));
-                        desktopPane.add(newImageFrame);
-                        newImageFrame.toFront();
-                        newImageFrame.setTitle("Automatic Contrast Stretching");
-                        newImageFrame.addMouseListener(new MouseInputAdapter());
-                        newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                        newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                        try{newImageFrame.setSelected(true);}
-                        catch(Exception e){}
+                        ImageFrame imageFrame = 
+                            (ImageFrame) desktopPane.getSelectedFrame();
+                            ImageFrame newImageFrame = 
+                                new ImageFrame(contrastStretching(imageFrame.getImage(), low, high));
+                            desktopPane.add(newImageFrame);
+                            newImageFrame.display();
+                            newImageFrame.setTitle(
+                                "Automatic Contrast Stretching");
                     }
                 });
             }
@@ -438,33 +445,27 @@ public class ImagePimp extends JFrame{
 
         smoothMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(smooth(imageFrame.getImage()));
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(smooth(imageFrame.getImage()));
                 desktopPane.add(newImageFrame);
-		newImageFrame.toFront();
+                newImageFrame.display();
                 newImageFrame.setTitle("Smooth");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-		try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
         });
 
         sharpenMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(sharpen(imageFrame.getImage()));
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(sharpen(imageFrame.getImage()));
                 desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
+                newImageFrame.display();
                 newImageFrame.setTitle("Sharpen");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
-	});
+        });
 
         kMeans.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
@@ -493,7 +494,8 @@ public class ImagePimp extends JFrame{
 
                 JLabel colorLabel = new JLabel("Color Space:");
                 middlePanel.add(colorLabel);
-                final String[] colorString = {"RGB", "YCbCr", "YUV", "HSB", "XYZ", "LUV"};
+                final String[] colorString = 
+                    {"RGB", "YCbCr", "YUV", "HSB", "XYZ", "LUV"};
                 final JComboBox colorBox = new JComboBox(colorString);
                 middlePanel.add(colorBox);
                 colorBox.addActionListener(new ActionListener(){
@@ -534,12 +536,10 @@ public class ImagePimp extends JFrame{
                         ImageFrame newImageFrame = new ImageFrame(kMeansSegmentation(imageFrame.getImage(),
                             Integer.parseInt(tf.getText()), colorBox.getSelectedIndex(), colorSource));
                         desktopPane.add(newImageFrame);
-                        newImageFrame.toFront();
-                        newImageFrame.setTitle("K-Means: "+Integer.parseInt(tf.getText())+" segments, "+ colorString[colorBox.getSelectedIndex()]);
-                        newImageFrame.addMouseListener(new MouseInputAdapter());
-                        newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                        newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                        try{newImageFrame.setSelected(true);}catch(Exception e){}
+                        newImageFrame.display();
+                        newImageFrame.setTitle("K-Means: "+
+                            Integer.parseInt(tf.getText())+" segments, "+ 
+                            colorString[colorBox.getSelectedIndex()]);
                     }
                 });
             }
@@ -579,13 +579,15 @@ public class ImagePimp extends JFrame{
                 fuzzyTF.setText("2");
                 JLabel colorLabel = new JLabel("Color Space:");
                 middlePanel1.add(colorLabel);
-                final String[] colorString = {"RGB", "YCbCr", "YUV", "HSB", "XYZ", "LUV"};
+                final String[] colorString = 
+                    {"RGB", "YCbCr", "YUV", "HSB", "XYZ", "LUV"};
                 final JComboBox colorBox = new JComboBox(colorString);
                 middlePanel1.add(colorBox);
 
                 JLabel stop = new JLabel("Stop Condition: ");
                 middlePanel2.add(stop);
-                final JRadioButton quality = new JRadioButton("Quality", true);
+                final JRadioButton quality = 
+                    new JRadioButton("Quality", true);
                 middlePanel2.add(quality, true);
                 final JTextField qualityTF = new JTextField(4);
                 qualityTF.setText("0.001");
@@ -619,17 +621,20 @@ public class ImagePimp extends JFrame{
                         }
 
                         menu.setVisible(false);
-                        ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                        ImageFrame newImageFrame = new ImageFrame(fuzzyCMeansSegmentation(imageFrame.getImage(), Integer.parseInt(c.getText()),
-                                Double.parseDouble(fuzzyTF.getText()), colorBox.getSelectedIndex(), stopCondition, stopValue));
+                        ImageFrame imageFrame = 
+                            (ImageFrame) desktopPane.getSelectedFrame();
+                        ImageFrame newImageFrame = 
+                            new ImageFrame(fuzzyCMeansSegmentation(
+                                imageFrame.getImage(), 
+                                Integer.parseInt(c.getText()),
+                                Double.parseDouble(fuzzyTF.getText()), 
+                                colorBox.getSelectedIndex(), 
+                                stopCondition, stopValue));
                         desktopPane.add(newImageFrame);
-                        newImageFrame.toFront();
-                        newImageFrame.setTitle("Fuzzy C-Means: "+Integer.parseInt(c.getText())+" segments, "+ colorString[colorBox.getSelectedIndex()]);
-                        newImageFrame.addMouseListener(new MouseInputAdapter());
-                        newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                        newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                        try{newImageFrame.setSelected(true);}
-                        catch(Exception e){}
+                        newImageFrame.display();
+                        newImageFrame.setTitle("Fuzzy C-Means: "+
+                            Integer.parseInt(c.getText())+" segments, "+ 
+                            colorString[colorBox.getSelectedIndex()]);
                     }
                 });
             }
@@ -665,18 +670,19 @@ public class ImagePimp extends JFrame{
                 run.addActionListener(new ActionListener(){
                     public void actionPerformed(ActionEvent ae){
                         int segs = Integer.parseInt(numSegsTF.getText());
-                        double fuzzy = Double.parseDouble(fuzzynessTF.getText());
+                        double fuzzy = Double.parseDouble(
+                            fuzzynessTF.getText());
                         double ep = Double.parseDouble(epsilonTF.getText());
                         menu.setVisible(false);
-                        ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                        ImageFrame newImageFrame = new ImageFrame(possibilityCMeansSegmentation(imageFrame.getImage(),segs,fuzzy,ep));
+                        ImageFrame imageFrame = 
+                            (ImageFrame) desktopPane.getSelectedFrame();
+                        ImageFrame newImageFrame = 
+                            new ImageFrame(possibilityCMeansSegmentation(
+                                imageFrame.getImage(),segs,fuzzy,ep));
                         desktopPane.add(newImageFrame);
-                        newImageFrame.toFront();
-                        newImageFrame.setTitle("Possibility C-Means Segmentation");
-                        newImageFrame.addMouseListener(new MouseInputAdapter());
-                        newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                        newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                        try{newImageFrame.setSelected(true);}catch(Exception e){}
+                        newImageFrame.display();
+                        newImageFrame.setTitle(
+                            "Possibility C-Means Segmentation");
                     }
                 });
                 menu.add(panel);
@@ -685,8 +691,8 @@ public class ImagePimp extends JFrame{
 
         transformationsMenu.add(ainetTransformationsMenuItem);
         transformationsMenu.add(rotateSubmenu);
-        transformationsMenu.add(grayscaleTransformationsMenuItem);
-        transformationsMenu.add(histogramTransformationMenuItem);
+        transformationsMenu.add(grayscaleMenuItem);
+        transformationsMenu.add(histogramMenuItem);
         transformationsMenu.add(contrastStretchingMenuItem);
         transformationsMenu.add(segmentationMenu);
         transformationsMenu.add(edgeDetectMenu);
@@ -697,293 +703,269 @@ public class ImagePimp extends JFrame{
         transformationsMenu.add(customTransformationsMenuItem);
         menuBar.add(transformationsMenu);
 
+        /* 
+         * Filter menu items.
+         * None of these are implemented
+         */
         JMenu filtersMenu = new JMenu("Filter");
-        JMenuItem contrastEnhancementFiltersMenuItem = new JMenuItem("Contrast Enhancement");
-	JMenuItem customFiltersMenuItem = new JMenuItem("Custom...");
+
+        JMenuItem contrastEnhancementFiltersMenuItem = 
+            new JMenuItem("Contrast Enhancement");
         contrastEnhancementFiltersMenuItem.setEnabled(false);
-	customFiltersMenuItem.setEnabled(false);
+	    JMenuItem customFiltersMenuItem = new JMenuItem("Custom...");
+        customFiltersMenuItem.setEnabled(false);
         filtersMenu.add(contrastEnhancementFiltersMenuItem);
-	filtersMenu.addSeparator();
-	filtersMenu.add(customFiltersMenuItem);
+        filtersMenu.addSeparator();
+        filtersMenu.add(customFiltersMenuItem);
         menuBar.add(filtersMenu);
 
-	setJMenuBar(menuBar);
-        //////////This is my part.
         JMenu My_transformationsMenu = new JMenu("My_Transformations");
-        JMenuItem My_contrastStretchingMenuItem = new JMenuItem("Automated Contrast Stretching");
-        JMenuItem My_SobelOperatorMenuItem = new JMenuItem("Sober Operator");
-        JMenuItem My_histogramMenueItem = new JMenuItem("My_Histgrom");
-        JMenuItem My_KmeansSegmentItem = new JMenuItem("K-means Segmentation");
-        JMenuItem My_FuzzyCmeansItem = new JMenuItem("Fuzzy C-means Segmentation");
-        JMenuItem My_OptimalThresholdItem = new JMenuItem("Optimal Thresholding");
-        JMenu My_GrayScaleMorphologyMenu = new JMenu("Morphological Operation");
+
+        JMenuItem CornerItem = new JMenuItem(" Corner Detection");
+        JMenuItem Binarythinnig = new JMenuItem("Binary Thinning");
+        JMenuItem HSIItemtoRGB = new JMenuItem("HSI to RGB ");
+        JMenuItem RGBtoHSIItem = new JMenuItem("RGB to HSI");
+        JMenuItem My_FuzzyCmeansItem = 
+            new JMenuItem("Fuzzy C-means Segmentation");
+        JMenuItem My_KmeansSegmentItem = 
+            new JMenuItem("K-means Segmentation");
+        JMenuItem My_contrastStretchingMenuItem = 
+            new JMenuItem("Automated Contrast Stretching");
+        JMenuItem My_SobelOperatorMenuItem = 
+            new JMenuItem("Sober Operator");
+        JMenuItem My_histogramMenueItem = new JMenuItem("My_Histgram");
+        JMenuItem My_OptimalThresholdItem = 
+            new JMenuItem("Optimal Thresholding");
+        JMenu My_GrayScaleMorphologyMenu = 
+            new JMenu("Morphological Operation");
         JMenuItem My_MorphologyItemErosion = new JMenuItem("Erosion");
         JMenuItem My_MorphologyItemDilation = new JMenuItem("Dilation");
         JMenuItem My_MorphologyItemOpen = new JMenuItem("Opening");
         JMenuItem My_MorphologyItemClose = new JMenuItem("Closing");
-        JMenuItem RGBtoHSIItem = new JMenuItem("RGB to HSI");
-        JMenuItem HSIItemtoRGB = new JMenuItem("HSI to RGB ");
-        JMenuItem Binarythinnig = new JMenuItem("Binary Thinning");
-        JMenuItem CornerItem = new JMenuItem(" Corner Detection");
-
-
-
-       CornerItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(MycornerDetection(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("Corner Detection");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-
-        Binarythinnig.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(doThinning(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("Binary Thinning");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-
-       HSIItemtoRGB.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(MyHSItoRGB(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("HSI to RGB");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-
-        RGBtoHSIItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(MyRGBtoHSI_H(imageFrame.getImage()));
-                ImageFrame newImageFrame1 = new ImageFrame(MyRGBtoHSI_H(imageFrame.getImage()));
-                ImageFrame newImageFrame2 = new ImageFrame(MyRGBtoHSI_S(imageFrame.getImage()));
-                ImageFrame newImageFrame3 = new ImageFrame(MyRGBtoHSI_I(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                desktopPane.add(newImageFrame1);
-                desktopPane.add(newImageFrame2);
-                desktopPane.add(newImageFrame3);
-                newImageFrame.toFront();
-                newImageFrame1.toFront();
-                newImageFrame2.toFront();
-                newImageFrame3.toFront();
-                newImageFrame.setTitle("RGB to HSI");
-                newImageFrame1.setTitle("HSI Image H");
-                newImageFrame2.setTitle("HSI Image S");
-                newImageFrame3.setTitle("HSI Image I");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-        My_MorphologyItemClose.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame1 = new ImageFrame(colorToGrayscale(imageFrame.getImage()));
-                ImageFrame newImageFrame = new ImageFrame(MyMorphologyClose(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                desktopPane.add(newImageFrame1);
-                newImageFrame1.toFront();
-                newImageFrame.toFront();
-                newImageFrame1.setTitle("Color to Gray");
-                newImageFrame.setTitle("Closing (Gray Level)");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-
-        My_MorphologyItemOpen.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame1 = new ImageFrame(colorToGrayscale(imageFrame.getImage()));
-                ImageFrame newImageFrame = new ImageFrame(MyMorphologyOpen(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                desktopPane.add(newImageFrame1);
-                newImageFrame1.toFront();
-                newImageFrame.toFront();
-                newImageFrame1.setTitle("Color to Gray");
-                newImageFrame.setTitle("Opening (Gray Level)");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-       My_MorphologyItemErosion.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame1 = new ImageFrame(colorToGrayscale(imageFrame.getImage()));
-                ImageFrame newImageFrame = new ImageFrame(MyMorphologyErosion(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                desktopPane.add(newImageFrame1);
-                newImageFrame1.toFront();
-                newImageFrame.toFront();
-                newImageFrame1.setTitle("Color to Gray");
-                newImageFrame.setTitle("Erosion (Gray Level)");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-        My_MorphologyItemDilation.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame1 = new ImageFrame(colorToGrayscale(imageFrame.getImage()));
-                ImageFrame newImageFrame = new ImageFrame(MyMorphologyDilation(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                desktopPane.add(newImageFrame1);
-                newImageFrame1.toFront();
-                newImageFrame.toFront();
-                newImageFrame1.setTitle("Color to Gray");
-                newImageFrame.setTitle("Dilation (Gray Level)");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-        My_OptimalThresholdItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-
-                ImageFrame newImageFrame = new ImageFrame(MyOptimalthredshold(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("Optimal Thresholding");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-
-               My_KmeansSegmentItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                String inputK = JOptionPane.showInputDialog(null,
-                        "Please input K:", "K-means Segmentation", JOptionPane.QUESTION_MESSAGE);
-                int k = Integer.parseInt(inputK);
-                //ImageFrame newImageFrame = new ImageFrame(kMeansSegmentation(imageFrame.getImage(),
-                  //          Integer.parseInt(tf.getText()));
-                ImageFrame newImageFrame = new ImageFrame(MyKmeansSegmentation(imageFrame.getImage(),k));
-                desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("K-means Segmentation(K = "+k +" )");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-       My_FuzzyCmeansItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                String inputK = JOptionPane.showInputDialog(null,
-                        "Please input C:", "Fuzzy C-means Segmentation", JOptionPane.QUESTION_MESSAGE);
-                int C = Integer.parseInt(inputK);
-                ImageFrame newImageFrame = new ImageFrame(MyFuzzyCmeansSeg(imageFrame.getImage(),C));
-                desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("Fuzzy C-means Segmentation(C = "+C +" ,m = 2,e = 0)");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-        My_contrastStretchingMenuItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame1 = new ImageFrame(colorToGrayscale(imageFrame.getImage()));
-                ImageFrame newImageFrame = new ImageFrame(My_contrastStretch(imageFrame.getImage()));
-                desktopPane.add(newImageFrame1);
-                desktopPane.add(newImageFrame);
-                newImageFrame1.toFront();
-                newImageFrame1.setTitle("Color to Gray");
-                newImageFrame.toFront();
-                newImageFrame.setTitle("My_automatedContraststreching");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-         My_SobelOperatorMenuItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame1 = new ImageFrame(GradientSobel(imageFrame.getImage()));
-                ImageFrame newImageFrame = new ImageFrame(OrientationSobel(imageFrame.getImage()));
-                desktopPane.add(newImageFrame1);
-                desktopPane.add(newImageFrame);
-                newImageFrame1.toFront();
-                newImageFrame1.setTitle("Gradient image by Sobel");
-                newImageFrame.toFront();
-                newImageFrame.setTitle("Orientation edge by Sobel");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                newImageFrame1.addMouseListener(new MouseInputAdapter());
-                newImageFrame1.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame1.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-                try{newImageFrame1.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-         My_histogramMenueItem.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
-                ImageFrame newImageFrame = new ImageFrame(My_histogram(imageFrame.getImage()));
-                desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("  Histogram Equalization");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
-            }
-	});
-
         My_GrayScaleMorphologyMenu.add(My_MorphologyItemErosion);
         My_GrayScaleMorphologyMenu.add(My_MorphologyItemDilation);
         My_GrayScaleMorphologyMenu.add(My_MorphologyItemOpen);
         My_GrayScaleMorphologyMenu.add(My_MorphologyItemClose);
+
+        CornerItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MycornerDetection(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
+                newImageFrame.setTitle("Corner Detection");
+            }
+	    });
+
+        Binarythinnig.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(doThinning(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
+                newImageFrame.setTitle("Binary Thinning");
+            }
+	    });
+
+        HSIItemtoRGB.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MyHSItoRGB(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
+                newImageFrame.setTitle("HSI to RGB");
+            }
+	    });
+
+        RGBtoHSIItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame1 = 
+                    new ImageFrame(MyRGBtoHSI_H(imageFrame.getImage()));
+                ImageFrame newImageFrame2 = 
+                    new ImageFrame(MyRGBtoHSI_S(imageFrame.getImage()));
+                ImageFrame newImageFrame3 = 
+                    new ImageFrame(MyRGBtoHSI_I(imageFrame.getImage()));
+                desktopPane.add(newImageFrame1);
+                desktopPane.add(newImageFrame2);
+                desktopPane.add(newImageFrame3);
+                newImageFrame1.display();
+                newImageFrame2.display();
+                newImageFrame3.display();
+                newImageFrame1.setTitle("HSI-Hue");
+                newImageFrame2.setTitle("HSI-Saturation");
+                newImageFrame3.setTitle("HSI-Intensity");
+            }
+        });
+        My_MorphologyItemClose.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame1 = 
+                    new ImageFrame(colorToGrayscale(imageFrame.getImage()));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MyMorphologyClose(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                desktopPane.add(newImageFrame1);
+                newImageFrame1.display();
+                newImageFrame.display();
+                newImageFrame1.setTitle("Color to Gray");
+                newImageFrame.setTitle("Closing (Gray Level)");
+            }
+        });
+
+        My_MorphologyItemOpen.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame1 = 
+                    new ImageFrame(colorToGrayscale(imageFrame.getImage()));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MyMorphologyOpen(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                desktopPane.add(newImageFrame1);
+                newImageFrame1.display();
+                newImageFrame.display();
+                newImageFrame1.setTitle("Color to Gray");
+                newImageFrame.setTitle("Opening (Gray Level)");
+            }
+        });
+
+        My_MorphologyItemErosion.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame1 = 
+                    new ImageFrame(colorToGrayscale(imageFrame.getImage()));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MyMorphologyErosion(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                desktopPane.add(newImageFrame1);
+                newImageFrame1.display();
+                newImageFrame.display();
+                newImageFrame1.setTitle("Color to Gray");
+                newImageFrame.setTitle("Erosion (Gray Level)");
+            }
+        });
+
+        My_MorphologyItemDilation.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame1 = 
+                    new ImageFrame(colorToGrayscale(imageFrame.getImage()));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MyMorphologyDilation(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                desktopPane.add(newImageFrame1);
+                newImageFrame1.display();
+                newImageFrame.display();
+                newImageFrame1.setTitle("Color to Gray");
+                newImageFrame.setTitle("Dilation (Gray Level)");
+            }
+        });
+
+        My_OptimalThresholdItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MyOptimalthredshold(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
+                newImageFrame.setTitle("Optimal Thresholding");
+            }
+        });
+
+        My_KmeansSegmentItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                String inputK = JOptionPane.showInputDialog(null,
+                        "Please input K:", "K-means Segmentation", 
+                        JOptionPane.QUESTION_MESSAGE);
+                int k = Integer.parseInt(inputK);
+                //ImageFrame newImageFrame = 
+                //  new ImageFrame(kMeansSegmentation(imageFrame.getImage(),
+                //      Integer.parseInt(tf.getText()));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(
+                        MyKmeansSegmentation(imageFrame.getImage(),k));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
+                newImageFrame.setTitle("K-means Segmentation(K = "+k +" )");
+            }
+        });
+                
+        My_FuzzyCmeansItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                String inputK = JOptionPane.showInputDialog(null,
+                    "Please input C:", "Fuzzy C-means Segmentation", 
+                    JOptionPane.QUESTION_MESSAGE);
+                int C = Integer.parseInt(inputK);
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MyFuzzyCmeansSeg(imageFrame.getImage(),C));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
+                newImageFrame.setTitle(
+                    "Fuzzy C-means Segmentation(C = "+C +" ,m = 2,e = 0)");
+            }
+        });
+
+        My_contrastStretchingMenuItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame1 = 
+                    new ImageFrame(colorToGrayscale(imageFrame.getImage()));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(My_contrastStretch(imageFrame.getImage()));
+                desktopPane.add(newImageFrame1);
+                desktopPane.add(newImageFrame);
+                newImageFrame1.display();
+                newImageFrame1.setTitle("Color to Gray");
+                newImageFrame.display();
+                newImageFrame.setTitle("My_automatedContraststreching");
+            }
+        });
+
+        My_SobelOperatorMenuItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame1 = 
+                    new ImageFrame(GradientSobel(imageFrame.getImage()));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(OrientationSobel(imageFrame.getImage()));
+                desktopPane.add(newImageFrame1);
+                desktopPane.add(newImageFrame);
+                newImageFrame1.display();
+                newImageFrame1.setTitle("Gradient image by Sobel");
+                newImageFrame.display();
+                newImageFrame.setTitle("Orientation edge by Sobel");
+            }
+        });
+        My_histogramMenueItem.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame newImageFrame = 
+                    new ImageFrame(My_histogram(imageFrame.getImage()));
+                desktopPane.add(newImageFrame);
+                newImageFrame.display();
+                newImageFrame.setTitle("  Histogram Equalization");
+            }
+        });
 
         My_transformationsMenu.add(CornerItem);
         My_transformationsMenu.add(Binarythinnig);
@@ -997,144 +979,150 @@ public class ImagePimp extends JFrame{
         My_transformationsMenu.add(My_OptimalThresholdItem);
         My_transformationsMenu.add(My_GrayScaleMorphologyMenu);
         menuBar.add(My_transformationsMenu);
-      //  menuBar.add(My_SobelOperatorMenuItem);
 
-                       ///////////////////////////////////////////////////////////////
-        JMenu HyspectralDisMenu = new JMenu("Hyspectral Discramnation");
-        JMenuItem SepctralAMapperItem = new JMenuItem("Spectral Angle Mapper");
-        JMenuItem SpectralInformaItem = new JMenuItem("Sepctral Information Divergence");
-        JMenuItem SuperKmeansItem = new JMenuItem("(SAM)Super K means Segmentaion");
-        JMenuItem SuperKmeans2Item = new JMenuItem("(SIM)Supper K means Segmentation");
-   //     JMenuItem SuperKmeans3Item = new JMenuItem("(Entropy)Supper K means Segmentation");
+        /*
+         * Hyperspectral Menu
+         */
 
-        //////SIM
+        JMenu HyspectralDisMenu = new JMenu("Hyspectral Discrimination");
+        JMenuItem SuperKmeans2Item = 
+            new JMenuItem("(SIM)Supper K means Segmentation");
+        JMenuItem SuperKmeansItem = 
+            new JMenuItem("(SAM)Super K means Segmentaion");
+        JMenuItem SpectralInformaItem = 
+            new JMenuItem("Spectral Information Divergence");
+        JMenuItem SpectralAMapperItem = new JMenuItem("Spectral Angle Mapper");
+
+        /////SIM
         SuperKmeans2Item.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
                 String inputK = JOptionPane.showInputDialog(null,
-                        "Please input K:", "K-means Segmentation", JOptionPane.QUESTION_MESSAGE);
+                    "Please input K:", "K-means Segmentation", 
+                    JOptionPane.QUESTION_MESSAGE);
                 int k = Integer.parseInt(inputK);
-                ImageFrame newImageFrame = new ImageFrame(MySuperkMeansSIMSegmetation(imageFrame.getImage(), k));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(
+                        MySuperkMeansSIMSegmetation(imageFrame.getImage(), k));
                 desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
+                newImageFrame.display();
                 newImageFrame.setTitle("SIM (K = "+k +" )");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
 	});
         /////SAM
         SuperKmeansItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
                 String inputK = JOptionPane.showInputDialog(null,
-                        "Please input K:", "K-means Segmentation", JOptionPane.QUESTION_MESSAGE);
+                    "Please input K:", "K-means Segmentation", 
+                    JOptionPane.QUESTION_MESSAGE);
                 int k = Integer.parseInt(inputK);
-                ImageFrame newImageFrame = new ImageFrame(My_SAMSuperkMeansSegmetation(imageFrame.getImage(), k));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(
+                        My_SAMSuperkMeansSegmetation(imageFrame.getImage(), k));
                 desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
+                newImageFrame.display();
                 newImageFrame.setTitle("Super K-means Segmentation (K = "+k +" )");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
-	});
+	    });
 
         SpectralInformaItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
                 String inputK = JOptionPane.showInputDialog(null,
-                        "Please input K:", "K-means Segmentation", JOptionPane.QUESTION_MESSAGE);
+                    "Please input K:", "K-means Segmentation", 
+                    JOptionPane.QUESTION_MESSAGE);
                 int k = Integer.parseInt(inputK);
-                ImageFrame newImageFrame = new ImageFrame(MySpectralInformationDivergence(imageFrame.getImage(), k));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(
+                        MySpectralInformationDivergence(
+                            imageFrame.getImage(), k));
                 desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("Spectral Information Divergence (K = "+k +" )");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
+                newImageFrame.display();
+                newImageFrame.setTitle(
+                    "Spectral Information Divergence (K = "+k +" )");
             }
-	});
-        SepctralAMapperItem.addActionListener(new ActionListener(){
+	    });
+
+        SpectralAMapperItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
                 String inputK = JOptionPane.showInputDialog(null,
-                        "Please input K:", "K-means Segmentation", JOptionPane.QUESTION_MESSAGE);
+                    "Please input K:", "K-means Segmentation", 
+                    JOptionPane.QUESTION_MESSAGE);
                 int k = Integer.parseInt(inputK);
-                //ImageFrame newImageFrame = new ImageFrame(kMeansSegmentation(imageFrame.getImage(),
-                //          Integer.parseInt(tf.getText()));
-                ImageFrame newImageFrame = new ImageFrame(MySpectralAngleMapper(imageFrame.getImage(), k));
+                // ImageFrame newImageFrame = 
+                //   new ImageFrame(kMeansSegmentation(imageFrame.getImage(),
+                // Integer.parseInt(tf.getText()));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(
+                        MySpectralAngleMapper(imageFrame.getImage(), k));
                 desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
+                newImageFrame.display();
                 newImageFrame.setTitle("Spectral Angle Mapper (K = "+k +" )");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
             }
-	});
-      //  HyspectralDisMenu.add(SuperKmeans5Item);
-      //  HyspectralDisMenu.add(SuperKmeans4Item);
-      //  HyspectralDisMenu.add(SuperKmeans3Item);
+        });
+
         HyspectralDisMenu.add(SuperKmeans2Item);
         HyspectralDisMenu.add(SuperKmeansItem);
         HyspectralDisMenu.add(SpectralInformaItem);
-        HyspectralDisMenu.add(SepctralAMapperItem);
+        HyspectralDisMenu.add(SpectralAMapperItem);
         menuBar.add(HyspectralDisMenu);
 
         JMenu ACOMenu = new JMenu("Ant Colony Optimization");
-        JMenuItem ACOMenuItem = new JMenuItem("Anto Colony Optimization");
         JMenuItem RFCMenuItem = new JMenuItem("Robust Fuzzy C-means");
+        JMenuItem ACOMenuItem = new JMenuItem("Ant Colony Optimization");
 
         ACOMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
                 String inputK = JOptionPane.showInputDialog(null,
-                        "Please input K:", "K-means Segmentation", JOptionPane.QUESTION_MESSAGE);
+                    "Please input K:", "K-means Segmentation", 
+                    JOptionPane.QUESTION_MESSAGE);
                 int k = Integer.parseInt(inputK);
 
-                ImageFrame newImageFrame = new ImageFrame(MyACO(imageFrame.getImage(), k));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(MyACO(imageFrame.getImage(), k));
                 desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("Ant Colony Optimization (K = "+k +" )");
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
+                newImageFrame.display();
+                newImageFrame.setTitle(
+                    "Ant Colony Optimization (K = "+k +" )");
             }
-	});
+        });
+
         RFCMenuItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                ImageFrame imageFrame = (ImageFrame) desktopPane.getSelectedFrame();
+                ImageFrame imageFrame = 
+                    (ImageFrame) desktopPane.getSelectedFrame();
                 String inputK = JOptionPane.showInputDialog(null,
-                        "Please input K:", "K-means Segmentation", JOptionPane.QUESTION_MESSAGE);
+                    "Please input K:", "K-means Segmentation", 
+                    JOptionPane.QUESTION_MESSAGE);
                 int k = Integer.parseInt(inputK);
                 String inputF = JOptionPane.showInputDialog(null,
-                        "Please input Fuzzness:", "K-means Segmentation", JOptionPane.QUESTION_MESSAGE);
+                    "Please input Fuzzness:", "K-means Segmentation", 
+                    JOptionPane.QUESTION_MESSAGE);
                 double f = Double.parseDouble(inputF);
 
-                ImageFrame newImageFrame = new ImageFrame(MyRobustFuzzyCmeansSeg(imageFrame.getImage(), k , f));
+                ImageFrame newImageFrame = 
+                    new ImageFrame(
+                        MyRobustFuzzyCmeansSeg(imageFrame.getImage(), k , f));
                 desktopPane.add(newImageFrame);
-                newImageFrame.toFront();
-                newImageFrame.setTitle("Robust Fuzzy C-means (K = "+k +" f: " + f + " )" );
-                newImageFrame.addMouseListener(new MouseInputAdapter());
-                newImageFrame.addMouseMotionListener(new MouseInputAdapter());
-                newImageFrame.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                try{newImageFrame.setSelected(true);}
-                catch(Exception e){}
+                newImageFrame.display();
+                newImageFrame.setTitle(
+                    "Robust Fuzzy C-means (K = "+k +" f: " + f + " )" );
             }
-	});
+	    });
+
         ACOMenu.add(RFCMenuItem);
         ACOMenu.add(ACOMenuItem);
         menuBar.add(ACOMenu);
+
+	    setJMenuBar(menuBar);
 
         JPanel bottomBar = new JPanel();
         MouseInputAdapter.red = new JTextField(4);
@@ -1149,42 +1137,36 @@ public class ImagePimp extends JFrame{
         contentPane.add(bottomBar, BorderLayout.SOUTH);
 
 
-	addWindowListener(new WindowAdapter(){
+	    addWindowListener(new WindowAdapter(){
             @Override
             public void windowClosing(WindowEvent we){
                 System.exit(0);
             }
-	});
+	    });
         setSize(1000, 800);
         show();
     }
-    protected static int[][][] pixelsArrayToTRGBArray(int[] pixels, Dimension imageInDimension)
-	{
 
-		// Declare local storage
-		int imagePixelLength = (int) (imageInDimension.getWidth() * imageInDimension.getHeight());
-		int TRGB[][][] = new int[4][(int) imageInDimension.getWidth()][(int) imageInDimension.getHeight()];
+    protected static int[][][] pixelsArrayToTRGBArray(int[] pixels, 
+            Dimension imageInDimension) {
+		int imagePixelLength = (int) (imageInDimension.getWidth() * 
+            imageInDimension.getHeight());
+		int TRGB[][][] = new int[4][(int) imageInDimension.getWidth()]
+            [(int) imageInDimension.getHeight()];
 
-		// Convert pixel array to TRGB array
-		for (int column = 0, row = 0, pixelIndex = 0; pixelIndex < imagePixelLength; pixelIndex++)
-		{
-
-			// Store transparency
-			TRGB[0][column][row] = getTransparencyComponent(pixels[pixelIndex]);
-
-			// Store red
+		for (int column = 0, row = 0, pixelIndex = 0; 
+                pixelIndex < imagePixelLength; pixelIndex++) {
+			// transparency
+			TRGB[0][column][row] = 
+                getTransparencyComponent(pixels[pixelIndex]);
+			// red
 			TRGB[1][column][row] = getRedComponent(pixels[pixelIndex]);
-
-			// Store green
+			// green
 			TRGB[2][column][row] = getGreenComponent(pixels[pixelIndex]);
-
-			// Store blue
+			// blue
 			TRGB[3][column][row] = getBlueComponent(pixels[pixelIndex]);
 
-			// Calculate column and row indexes
-			if (++column == imageInDimension.getWidth())
-			{
-				// Reset column and increment row
+			if (++column == imageInDimension.getWidth()) {
 				column = 0;
 				row++;
 			}
@@ -1193,20 +1175,7 @@ public class ImagePimp extends JFrame{
 
 		// Return the newly generated TRGB array
 		return TRGB;
-
 	}
-
-  /*  protected Image mirror(Image imageIn){
-        int[] pixel = imageToPixelsArray(imageIn);
-        Dimension imageInDimension = getImageDimension(imageIn);
-        for(int i=0; i<imageInDimension.getHeight(); i++)
-            for(int j=0; j<imageInDimension.getWidth()/2; j++){
-                int temp = pixel[i*(int)imageInDimension.getWidth()+j];
-                pixel[i*(int)imageInDimension.getWidth()+j] = pixel[i*(int)imageInDimension.getWidth()+(int)imageInDimension.getWidth()-j-1];
-                pixel[i*(int)imageInDimension.getWidth()+(int)imageInDimension.getWidth()-j-1] = temp;
-        }
-        return pixelsArrayToImage(pixel, imageInDimension);
-    }*/
 
     protected Image rotate90(Image imageIn){
         int[] pixel = imageToPixelsArray(imageIn);
@@ -2895,30 +2864,6 @@ public class ImagePimp extends JFrame{
 
 
     protected Image MySpectralInformationDivergence(Image imageIn, int numSegments){
-        class ColorsClusterIndex{
-            private int color1, color2, color3, cluster, index;
-            public ColorsClusterIndex(int one, int two, int three, int c, int i){
-                color1 = one;
-                color2 = two;
-                color3 = three;
-                cluster = c;
-                index = i;
-            }
-            public int getC1(){ return color1; }
-            public int getC2(){ return color2; }
-            public int getC3(){ return color3; }
-            public int getCluster(){ return cluster; }
-            public ColorsClusterIndex setCluster(int in){
-                cluster = in;
-                return this;
-            }
-            public int getIndex(){
-                return index;
-            }
-            public int getSum(){
-                return color1 + color2 + color3;
-            }
-        }
 
         Dimension imageInDimension = getImageDimension(imageIn);
         Random r = new Random();
@@ -4016,31 +3961,16 @@ public class ImagePimp extends JFrame{
                         }
                         // clusCenter[index].member[column][row] = 1;
 
-                        // *FIXME* Nonesense! 
-                         double rr = r.nextInt(100000)/100000.0;
-                         /* rr is a random floating point value in the
-                          * range[0,1)(inlcuding 0 ,not inlcuding 1) Note we
-                          * numst convert rand() and/or RAND_Max + 1 to
-                          * floating point values to avoid integer division.
-                          * In addition, sean scanlon pointed out the
-                          * possbility that Random_max may be the largest
-                          * positive integer the architecture can represent, so
-                          * (Rand_max +1) may result in an overflow, or more
-                          * likely the value will end up being the largest
-                          * negative interger the architecture can represent,
-                          * so to avoid this we convert Rand_max and 1 to
-                          * double before adding.
-                          */
-                       for(int i = 1; i <= NumOfClusters; i++ ){   // loop for comparing n intervals
-                                                                   // j: index of compared interval
-                              if(rr >= Y[i - 1] && rr < Y[i]){
-                             //     System.out.println("memeber cluster " + (i - 1));
+                        double rr = r.nextDouble();
+                        // loop for comparing n intervals
+                        for(int i = 1; i <= NumOfClusters; i++ ){   
+                            // j: index of compared interval
+                            if(rr >= Y[i - 1] && rr < Y[i]){
+                            // System.out.println("memeber cluster " + (i - 1));
                                 clusCenter[i-1].member[column][row] = 1;
-                              break;
-                             }
+                                break;
+                            }
                         }
-                     //
-
                    }
                 }
                 // calculating cluster centers
@@ -5720,8 +5650,24 @@ class ImageFrame extends JInternalFrame{
     }
 
     public Image getImage(){
-        // Return the image icon from the image panel, after conversion to an image
+        // Return the image icon from the image panel, 
+        // after conversion to an image
         return imagePanel.getImageIcon().getImage();
+    }
+
+    public void display(){
+        this.toFront();
+        this.addMouseListener(new MouseInputAdapter());
+        this.addMouseMotionListener(new MouseInputAdapter());
+        this.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
+        try{
+            this.setSelected(true);
+        }
+        catch(PropertyVetoException e){
+            Logger.getLogger(
+                ImagePimp.class.getName()).log(
+                    Level.SEVERE, null, e);
+        }
     }
 
     private class ImagePanel extends JPanel{
